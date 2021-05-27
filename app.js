@@ -93,7 +93,7 @@ async function informWatchers(changeSets, res, muCallIdTrail) {
   } catch (error) {
     FAILURES.push({
       error,
-      date: dayjs.now()
+      date: dayjs()
     });
   }
 }
