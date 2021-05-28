@@ -3,8 +3,7 @@ import request from 'request';
 import services from '/config/rules.js';
 import bodyParser from 'body-parser';
 import dns from 'dns';
-import { FAILURES } from './lib/health';
-import dayjs from 'dayjs';
+import metrics from './lib/metrics';
 
 // Also parse application/json as json
 app.use(bodyParser.json({
@@ -21,6 +20,10 @@ if (process.env['LOG_SERVER_CONFIGURATION'])
 app.get('/', function(req, res) {
   res.status(200);
   res.send('Hello, delta notification is running');
+});
+
+app.get('/metric', function(req, res) {
+  res.status(200).send(metrics.getReport());
 });
 
 app.post('/', function(req, res) {
@@ -48,8 +51,9 @@ app.post('/', function(req, res) {
 });
 
 async function informWatchers(changeSets, res, muCallIdTrail) {
-  try {
-    services.map(async (entry) => {
+
+  services.map(async (entry) => {
+    try {
       // for each entity
       if (process.env['DEBUG_DELTA_MATCH'])
         console.log(`Checking if we want to send to ${entry.callback.url}`);
@@ -89,13 +93,14 @@ async function informWatchers(changeSets, res, muCallIdTrail) {
           sendRequest(entry, originFilteredChangeSets, muCallIdTrail);
         }
       }
-    });
-  } catch (error) {
-    FAILURES.push({
-      error,
-      date: dayjs()
-    });
-  }
+    } catch (error) {
+      metrics.addRequest({
+        url: entry.callback.url,
+        method: entry.callback.method,
+        error
+      });
+    }
+  });
 }
 
 function tripleMatchesSpec(triple, matchSpec) {
@@ -186,10 +191,18 @@ async function sendRequest(entry, changeSets, muCallIdTrail) {
       console.log(`Could not send request ${method} ${url}`);
       console.log(error);
       console.log(`NOT RETRYING`); // TODO: retry a few times when delta's fail to send
+      metrics.addRequest({
+        url,
+        method,
+        error
+      });
     }
 
     if (response) {
-      // console.log( body );
+      metrics.addRequest({
+        url,
+        method
+      });
     }
   });
 }
