@@ -195,6 +195,36 @@ async function filterMatchesForOrigin( changeSets, entry ) {
   }
 }
 
+function filterMatchesForMuScopeId( changeSets, entry, muCallScopeId ){
+  if( !muCallScopeId ){
+    return changeSets;
+  }
+  //Note: if optIn and optOut are configured at the same time, optIn wins.
+  else if( hasConfiguredMuScopeOptIn(entry) ){
+    if( entry.options.optInMuScopeIds.indexOf(muCallScopeId) > -1 ){
+      return changeSets;
+    }
+    else return [];
+  }
+  else if( hasConfiguredMuScopeOptOut(entry) ){
+    if( entry.options.optOutMuScopeIds.indexOf(muCallScopeId) > -1 ){
+      return [];
+    }
+    else return changeSets;
+  }
+  else {
+    return changeSets;
+  }
+}
+
+function hasConfiguredMuScopeOptOut( entry ){
+  return entry.options && entry.options.optOutMuScopeIds && entry.options.optOutMuScopeIds.length;
+}
+
+function hasConfiguredMuScopeOptIn( entry ){
+  return entry.options && entry.options.optInMuScopeIds && entry.options.optInMuScopeIds.length;
+}
+
 function hostnameForEntry( entry ) {
   return (new URL(entry.callback.url)).hostname;
 }
