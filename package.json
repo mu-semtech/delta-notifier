@@ -22,6 +22,7 @@
   },
   "homepage": "https://github.com/mu-semtech/delta-notifier#readme",
   "dependencies": {
+    "dayjs": "^1.10.5",
     "request": "^2.88.0"
   }
 }
