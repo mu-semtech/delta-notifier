@@ -33,19 +33,21 @@ app.post( '/', function( req, res ) {
   const originalMuCallId = req.get('mu-call-id');
   const muCallIdTrail = JSON.stringify( [...originalMuCallIdTrail, originalMuCallId] );
 
+  const muCallScopeId = req.get('mu-call-scope-id');
+
   changeSets.forEach( (change) => {
     change.insert = change.insert || [];
     change.delete = change.delete || [];
   } );
 
   // inform watchers
-    informWatchers( changeSets, res, muCallIdTrail );
+  informWatchers( changeSets, res, muCallIdTrail, muCallScopeId );
 
   // push relevant data to interested actors
   res.status(204).send();
 } );
 
-async function informWatchers( changeSets, res, muCallIdTrail ){
+async function informWatchers( changeSets, res, muCallIdTrail, muCallScopeId ){
   services.map( async (entry) => {
     // for each entity
     if( process.env["DEBUG_DELTA_MATCH"] )
@@ -53,38 +55,42 @@ async function informWatchers( changeSets, res, muCallIdTrail ){
 
     const matchSpec = entry.match;
 
-    const originFilteredChangeSets = await filterMatchesForOrigin( changeSets, entry );
-    if( process.env["DEBUG_TRIPLE_MATCHES_SPEC"] && entry.options.ignoreFromSelf )
-      console.log(`There are ${originFilteredChangeSets.length} changes sets not from ${hostnameForEntry( entry )}`);
+    let filteredChangeSets = filterMatchesForMuScopeId( changeSets, entry, muCallScopeId );
 
-    let allInserts = [];
-    let allDeletes = [];
+    if(filteredChangeSets.length ){
+      filteredChangeSets = await filterMatchesForOrigin( filteredChangeSets, entry );
+      if( process.env["DEBUG_TRIPLE_MATCHES_SPEC"] && entry.options.ignoreFromSelf )
+        console.log(`There are ${filteredChangeSets.length} changes sets not from ${hostnameForEntry( entry )}`);
 
-    originFilteredChangeSets.forEach( (change) => {
-      allInserts = [...allInserts, ...change.insert];
-      allDeletes = [...allDeletes, ...change.delete];
-    } );
+      let allInserts = [];
+      let allDeletes = [];
 
-    const changedTriples = [...allInserts, ...allDeletes];
+      filteredChangeSets.forEach( (change) => {
+        allInserts = [...allInserts, ...change.insert];
+        allDeletes = [...allDeletes, ...change.delete];
+      } );
 
-    const someTripleMatchedSpec =
-        changedTriples
-        .some( (triple) => tripleMatchesSpec( triple, matchSpec ) );
+      const changedTriples = [...allInserts, ...allDeletes];
 
-    if( process.env["DEBUG_TRIPLE_MATCHES_SPEC"] )
-      console.log(`Triple matches spec? ${someTripleMatchedSpec}`);
+      const someTripleMatchedSpec =
+          changedTriples
+            .some( (triple) => tripleMatchesSpec( triple, matchSpec ) );
 
-    if( someTripleMatchedSpec ) {
-      // inform matching entities
-      if( process.env["DEBUG_DELTA_SEND"] )
-        console.log(`Going to send ${entry.callback.method} to ${entry.callback.url}`);
+      if( process.env["DEBUG_TRIPLE_MATCHES_SPEC"] )
+        console.log(`Triple matches spec? ${someTripleMatchedSpec}`);
 
-      if( entry.options && entry.options.gracePeriod ) {
-        setTimeout(
-          () => sendRequest( entry, originFilteredChangeSets, muCallIdTrail ),
-          entry.options.gracePeriod );
-      } else {
-        sendRequest( entry, originFilteredChangeSets, muCallIdTrail );
+      if( someTripleMatchedSpec ) {
+        // inform matching entities
+        if( process.env["DEBUG_DELTA_SEND"] )
+          console.log(`Going to send ${entry.callback.method} to ${entry.callback.url}`);
+
+        if( entry.options && entry.options.gracePeriod ) {
+          setTimeout(
+            () => sendRequest( entry, filteredChangeSets, muCallIdTrail ),
+            entry.options.gracePeriod );
+        } else {
+          sendRequest( entry, filteredChangeSets, muCallIdTrail );
+        }
       }
     }
   } );
@@ -193,6 +199,36 @@ async function filterMatchesForOrigin( changeSets, entry ) {
     const originIpAddress = await getServiceIp( entry );
     return changeSets.filter( (changeSet) => changeSet.origin != originIpAddress );
   }
+}
+
+function filterMatchesForMuScopeId( changeSets, entry, muCallScopeId ){
+  if( !muCallScopeId ){
+    return changeSets;
+  }
+  //Note: if optIn and optOut are configured at the same time, optIn wins.
+  else if( hasConfiguredMuScopeOptIn(entry) ){
+    if( entry.options.optInMuScopeIds.indexOf(muCallScopeId) > -1 ){
+      return changeSets;
+    }
+    else return [];
+  }
+  else if( hasConfiguredMuScopeOptOut(entry) ){
+    if( entry.options.optOutMuScopeIds.indexOf(muCallScopeId) > -1 ){
+      return [];
+    }
+    else return changeSets;
+  }
+  else {
+    return changeSets;
+  }
+}
+
+function hasConfiguredMuScopeOptOut( entry ){
+  return entry.options && entry.options.optOutMuScopeIds && entry.options.optOutMuScopeIds.length;
+}
+
+function hasConfiguredMuScopeOptIn( entry ){
+  return entry.options && entry.options.optInMuScopeIds && entry.options.optInMuScopeIds.length;
 }
 
 function hostnameForEntry( entry ) {

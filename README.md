@@ -69,6 +69,8 @@ The exported property contains an array of definitions, each linking a match to 
   - `options.resourceFormat`: Version format describing the format of the contents.  Keys may be added to this format, but they may not be removed.  Filter the properties as needed.
   - `options.gracePeriod`: Only send the response after a certain amount of time.  This will group changes in the future.
   - `options.ignoreFromSelf`: Don't inform about changes that originated from the microservice to be informed (based on the hostname).
+  - `options.optOutMuScopeIds`: List of mu-scope-ids (as URIs) to ignore.
+  - `options.optInMuScopeIds`: List of mu-scope-ids (as URIs) for exclusive subscription.
 
 ## Delta formats
 
@@ -95,7 +97,7 @@ v0.0.1 is the latest format of the delta messages. It may be extended with autho
 Genesis format as described by the initial Delta service PoC. It looks like:
 
 ```json
-    { 
+    {
       "delta": {
         "inserts": [{"s": "http://mu.semte.ch/",
                      "p": "http://www.w3.org/1999/02/22-rdf-syntax-ns#type",
@@ -115,7 +117,7 @@ Debugging can be enabled in the service by setting environment variables.  The f
   - `DEBUG_DELTA_SEND`: Logs all delta messages that are being sent to clients
   - `DEBUG_DELTA_MATCH`: Logs a check for each target block, indicating a check will occur
   - `DEBUG_TRIPLE_MATCHES_SPEC`: Extensive logging for triples matching a given specification.  Handy when requests are unexpectedly not sent.
-  
+
 ## Extending
 
 You are encouraged to help figure out how to best extend this service.  Fork this repository.  Run an experiment.  Open an issue or PR describing your experiment.  Feel free to open up an issue if you would like to discuss a possible extension.
