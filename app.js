@@ -55,17 +55,17 @@ async function informWatchers( changeSets, res, muCallIdTrail, muCallScopeId ){
 
     const matchSpec = entry.match;
 
-    let originFilteredChangeSets = filterMatchesForMuScopeId( changeSets, entry, muCallScopeId );
+    let filteredChangeSets = filterMatchesForMuScopeId( changeSets, entry, muCallScopeId );
 
-    if(originFilteredChangeSets.length ){
-      originFilteredChangeSets = await filterMatchesForOrigin( originFilteredChangeSets, entry );
+    if(filteredChangeSets.length ){
+      filteredChangeSets = await filterMatchesForOrigin( filteredChangeSets, entry );
       if( process.env["DEBUG_TRIPLE_MATCHES_SPEC"] && entry.options.ignoreFromSelf )
-        console.log(`There are ${originFilteredChangeSets.length} changes sets not from ${hostnameForEntry( entry )}`);
+        console.log(`There are ${filteredChangeSets.length} changes sets not from ${hostnameForEntry( entry )}`);
 
       let allInserts = [];
       let allDeletes = [];
 
-      originFilteredChangeSets.forEach( (change) => {
+      filteredChangeSets.forEach( (change) => {
         allInserts = [...allInserts, ...change.insert];
         allDeletes = [...allDeletes, ...change.delete];
       } );
@@ -86,10 +86,10 @@ async function informWatchers( changeSets, res, muCallIdTrail, muCallScopeId ){
 
         if( entry.options && entry.options.gracePeriod ) {
           setTimeout(
-            () => sendRequest( entry, originFilteredChangeSets, muCallIdTrail ),
+            () => sendRequest( entry, filteredChangeSets, muCallIdTrail ),
             entry.options.gracePeriod );
         } else {
-          sendRequest( entry, originFilteredChangeSets, muCallIdTrail );
+          sendRequest( entry, filteredChangeSets, muCallIdTrail );
         }
       }
     }
