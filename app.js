@@ -39,7 +39,7 @@ app.post( '/', function( req, res ) {
   } );
 
   // inform watchers
-    informWatchers( changeSets, res, muCallIdTrail );
+  informWatchers( changeSets, res, muCallIdTrail );
 
   // push relevant data to interested actors
   res.status(204).send();
@@ -118,7 +118,8 @@ function formatChangesetBody( changeSets, options ) {
       changeSets.map( (change) => {
         return {
           inserts: change.insert,
-          deletes: change.delete
+          deletes: change.delete,
+          index: change.index
         };
       } ) );
   }
