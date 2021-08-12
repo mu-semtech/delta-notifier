@@ -24,7 +24,7 @@ app.get( '/', function( req, res ) {
 app.post( '/', function( req, res ) {
   if( process.env["LOG_REQUESTS"] ) {
     console.log("Logging request body");
-    console.log(req.body);
+    console.log(JSON.stringify(req.body, null, 2)); // Pretty print
   }
 
   const changeSets = req.body.changeSets;
