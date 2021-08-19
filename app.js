@@ -69,26 +69,17 @@ async function informWatchers(changeSets, res, originalMuCallId) {
     if (process.env["DEBUG_TRIPLE_MATCHES_SPEC"] && entry.options.ignoreFromSelf)
       console.log(`There are ${originFilteredChangeSets.length} changes sets not from ${hostnameForEntry(entry)}`);
 
-    let allInserts = [];
-    let allDeletes = [];
 
-    if (getMatchOnEffective(entry)) {
-      originFilteredChangeSets.forEach((change) => {
-        allInserts = [...allInserts, ...change.effectiveInserts];
-        allDeletes = [...allDeletes, ...change.effectiveDeletes];
-      });
-    } else {
-      originFilteredChangeSets.forEach((change) => {
-        allInserts = [...allInserts, ...change.insert];
-        allDeletes = [...allDeletes, ...change.delete];
-      });
-    }
+    const triple_matches_f = (triple) => tripleMatchesSpec(triple, matchSpec);
 
-    const changedTriples = [...allInserts, ...allDeletes];
+    const someTripleMatchedSpec = getMatchOnEffective(entry) ? changeSets.some((change) =>
+      change.effectiveInserts.some(triple_matches_f) ||
+      change.effectiveDeletes.some(triple_matches_f)
+    ) : changeSets.some((change) =>
+      change.inserts.some(triple_matches_f) ||
+      change.deletes.some(triple_matches_f)
+    );
 
-    const someTripleMatchedSpec =
-      changedTriples
-        .some((triple) => tripleMatchesSpec(triple, matchSpec));
 
     if (process.env["DEBUG_TRIPLE_MATCHES_SPEC"])
       console.log(`Triple matches spec? ${someTripleMatchedSpec}`);
