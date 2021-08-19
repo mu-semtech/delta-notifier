@@ -27,9 +27,6 @@ app.post('/', function (req, res) {
     console.log(req.body);
   }
 
-  console.log(req.body);
-  console.log(req.get('mu-call-id-trail'));
-
   const changeSets = req.body.changeSets;
 
   // const originalMuCallIdTrail = JSON.parse(req.get('mu-call-id-trail') || "[]");
@@ -49,19 +46,6 @@ app.post('/', function (req, res) {
   // push relevant data to interested actors
   res.status(204).send();
 });
-
-// {
-//   changeSets:
-//   [{
-//     origin: '172.28.0.1',
-//     mu_call_id_trail: '[]',
-//     insert: [Array],
-//     delete: [Array],
-//     index: 1629274666268,
-//     authorization_groups:
-//       '[{"variables":[],"name":"public"},{"variables":[],"name":"user-lookup"},{"variables":[],"name":"clean"}]'
-//   }]
-// }
 
 function getMatchOnEffective(entry) {
   if (!(entry.options && "matchOnEffective" in entry.options)) return false; // DEFAULT
@@ -95,8 +79,8 @@ async function informWatchers(changeSets, res, originalMuCallId) {
       });
     } else {
       originFilteredChangeSets.forEach((change) => {
-        allInserts = [...allInserts, ...change.inserts];
-        allDeletes = [...allDeletes, ...change.deletes];
+        allInserts = [...allInserts, ...change.insert];
+        allDeletes = [...allDeletes, ...change.delete];
       });
     }
 
@@ -165,8 +149,8 @@ function formatV002(changeSets, options) {
   return JSON.stringify(
     changeSets.map((change) => {
       return {
-        inserts: change.inserts,
-        deletes: change.deletes,
+        inserts: change.insert,
+        deletes: change.delete,
         effectiveInserts: change.effectiveInserts,
         effectiveDeletes: change.effectiveDeletes,
         index: change.index
@@ -178,8 +162,8 @@ function formatV001(changeSets, options) {
   return JSON.stringify(
     changeSets.map((change) => {
       return {
-        inserts: change.inserts,
-        deletes: change.deletes
+        inserts: change.insert,
+        deletes: change.delete
       };
     }));
 }
