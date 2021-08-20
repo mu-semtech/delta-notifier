@@ -36,8 +36,8 @@ app.post('/', function (req, res) {
   changeSets.forEach((change) => {
     change.effectiveInserts = change.effectiveInserts || [];
     change.effectiveDeletes = change.effectiveDeletes || [];
-    change.inserts = change.inserts || [];
-    change.deletes = change.deletes || [];
+    change.insert = change.insert || [];
+    change.delete = change.delete || [];
   });
 
   // inform watchers
@@ -72,12 +72,12 @@ async function informWatchers(changeSets, res, originalMuCallId) {
 
     const triple_matches_f = (triple) => tripleMatchesSpec(triple, matchSpec);
 
-    const someTripleMatchedSpec = getMatchOnEffective(entry) ? changeSets.some((change) =>
+    const someTripleMatchedSpec = getMatchOnEffective(entry) ? originFilteredChangeSets.some((change) =>
       change.effectiveInserts.some(triple_matches_f) ||
       change.effectiveDeletes.some(triple_matches_f)
-    ) : changeSets.some((change) =>
-      change.inserts.some(triple_matches_f) ||
-      change.deletes.some(triple_matches_f)
+    ) : originFilteredChangeSets.some((change) =>
+      change.insert.some(triple_matches_f) ||
+      change.delete.some(triple_matches_f)
     );
 
 
