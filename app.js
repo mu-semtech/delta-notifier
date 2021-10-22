@@ -1,8 +1,10 @@
-import { app, uuid } from 'mu';
+import { app, uuid, sparql, query } from 'mu';
 import request from 'request';
 import services from '/config/rules.js';
 import bodyParser from 'body-parser';
 import dns from 'dns';
+
+const expensiveChecks = ['ask', 'class'];
 
 // Also parse application/json as json
 app.use( bodyParser.json( {
@@ -90,7 +92,7 @@ async function informWatchers( changeSets, res, muCallIdTrail ){
   } );
 }
 
-function tripleMatchesSpec( triple, matchSpec ) {
+async function tripleMatchesSpec( triple, matchSpec ) {
   // form of triple is {s, p, o}, same as matchSpec
   if( process.env["DEBUG_TRIPLE_MATCHES_SPEC"] )
     console.log(`Does ${JSON.stringify(triple)} match ${JSON.stringify(matchSpec)}?`);
@@ -102,15 +104,44 @@ function tripleMatchesSpec( triple, matchSpec ) {
 
     if( subMatchSpec && !subMatchValue )
       return false;
-
+  
     for( let subKey in subMatchSpec )
       // we're now matching something like {type: "url", value: "http..."}
-      if( subMatchSpec[subKey] !== subMatchValue[subKey] )
+      // first iteration performs the cheap checks locally.
+      if( !isExpensiveCheck(subKey) && subMatchSpec[subKey] !== subMatchValue[subKey] ) {
         return false;
+      }
+  }
+  
+  for( let key in matchSpec ){
+        // key is one of s, p, o
+        const subMatchSpec = matchSpec[key];
+        const subMatchValue = triple[key];    
+
+    for( let subKey in subMatchSpec )
+      // second iteration performs more expensive checks.
+      if( subKey == "ask" ) {
+        const matchesSpec = await askMatchSpec(subMatchValue['value'], subMatchSpec['ask']);
+        console.log(`MATCH RESULT ${JSON.stringify(matchesSpec)}`);
+        if( !matchesSpec )
+          return false;
+      }
   }
   return true; // no false matches found, let's send a response
 }
 
+function isExpensiveCheck( key ) {
+  return expensiveChecks.includes( key );
+}
+
+// TODO: make more intelligent: type handling. i.e. <uriValue>, "literalValue", ...
+async function askMatchSpec( resource, queryTemplate) {
+  const q = `ASK {
+    ${queryTemplate.replace(/{{this}}/g, `<${resource}>`)}
+  }`;
+  var result = await query(q);
+  return result.boolean;
+}
 
 function formatChangesetBody( changeSets, options ) {
   if( options.resourceFormat == "v0.0.1" ) {
