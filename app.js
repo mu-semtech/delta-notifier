@@ -108,9 +108,8 @@ async function tripleMatchesSpec( triple, matchSpec ) {
     for( let subKey in subMatchSpec )
       // we're now matching something like {type: "url", value: "http..."}
       // first iteration performs the cheap checks locally.
-      if( !isExpensiveCheck(subKey) && subMatchSpec[subKey] !== subMatchValue[subKey] ) {
+      if( !isExpensiveCheck(subKey) && subMatchSpec[subKey] !== subMatchValue[subKey] )
         return false;
-      }
   }
   
   for( let key in matchSpec ){
@@ -122,7 +121,6 @@ async function tripleMatchesSpec( triple, matchSpec ) {
       // second iteration performs more expensive checks.
       if( subKey == "ask" ) {
         const matchesSpec = await askMatchSpec(subMatchValue['value'], subMatchSpec['ask']);
-        console.log(`MATCH RESULT ${JSON.stringify(matchesSpec)}`);
         if( !matchesSpec )
           return false;
       }
