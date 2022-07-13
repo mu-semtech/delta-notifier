@@ -54,6 +54,7 @@ app.post('/', function (req, res) {
 async function informWatchers(changeSets, res, muCallIdTrail) {
   services.map(async (entry) => {
     // for each entity
+    //Logging
     if (process.env['DEBUG_DELTA_MATCH'])
       console.log(`Checking if we want to send to ${entry.callback.url}`);
 
@@ -63,6 +64,8 @@ async function informWatchers(changeSets, res, muCallIdTrail) {
       changeSets,
       entry
     );
+
+    //Logging
     if (
       process.env['DEBUG_TRIPLE_MATCHES_SPEC'] &&
       entry.options.ignoreFromSelf
@@ -87,10 +90,12 @@ async function informWatchers(changeSets, res, muCallIdTrail) {
       tripleMatchesSpec(triple, matchSpec)
     );
 
+    //Logging
     if (process.env['DEBUG_TRIPLE_MATCHES_SPEC'])
       console.log(`Triple matches spec? ${someTripleMatchedSpec}`);
 
     if (someTripleMatchedSpec) {
+      //Logging
       // inform matching entities
       if (process.env['DEBUG_DELTA_SEND'])
         console.log(
@@ -111,6 +116,8 @@ async function informWatchers(changeSets, res, muCallIdTrail) {
 
 function tripleMatchesSpec(triple, matchSpec) {
   // form of triple is {s, p, o}, same as matchSpec
+
+  //Logging
   if (process.env['DEBUG_TRIPLE_MATCHES_SPEC'])
     console.log(
       `Does ${JSON.stringify(triple)} match ${JSON.stringify(matchSpec)}?`
