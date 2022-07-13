@@ -3,6 +3,7 @@
   "version": "0.1.0",
   "description": "Sends notifications about changes to interested mu.semte.ch microservices",
   "main": "app.js",
+  "type": "module",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"
   },
@@ -23,5 +24,11 @@
   "homepage": "https://github.com/mu-semtech/delta-notifier#readme",
   "dependencies": {
     "request": "^2.88.0"
+  },
+  "devDependencies": {
+    "eslint": "^8.19.0",
+    "eslint-config-prettier": "^8.3.0",
+    "eslint-plugin-prettier": "^3.4.1",
+    "prettier": "^2.5.1"
   }
 }
