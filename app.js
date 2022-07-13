@@ -1,9 +1,10 @@
 import { app, uuid } from 'mu';
-import request from 'request';
 import services from '/config/rules.js';
 import bodyParser from 'body-parser';
 import dns from 'dns';
-import process from 'node:process';
+//Might need to enable the following on newer versions of NodeJS:
+//import process from 'node:process';
+import fetch from 'node-fetch';
 
 // Also parse application/json as json
 app.use(
@@ -170,51 +171,37 @@ function formatChangesetBody(changeSets, options) {
 }
 
 async function sendRequest(entry, changeSets, muCallIdTrail) {
-  let requestObject; // will contain request information
-
-  // construct the requestObject
-  const method = entry.callback.method;
-  const url = entry.callback.url;
-  const headers = {
-    'Content-Type': 'application/json',
-    'MU-AUTH-ALLOWED-GROUPS': changeSets[0].allowedGroups,
-    'mu-call-id-trail': muCallIdTrail,
-    'mu-call-id': uuid(),
+  // TODO: we now assume the mu-auth-allowed-groups will be the same
+  // for each changeSet.  that's a simplification and we should not
+  // depend on it.
+  const requestObject = {
+    method: entry.callback.method,
+    headers: {
+      'Content-Type': 'application/json',
+      'MU-AUTH-ALLOWED-GROUPS': changeSets[0].allowedGroups,
+      'mu-call-id-trail': muCallIdTrail,
+      'mu-call-id': uuid(),
+    },
   };
+  if (entry.options && entry.options.resourceFormat)
+    requestObject.body = formatChangesetBody(changeSets, entry.options);
 
-  if (entry.options && entry.options.resourceFormat) {
-    // we should send contents
-    const body = formatChangesetBody(changeSets, entry.options);
-
-    // TODO: we now assume the mu-auth-allowed-groups will be the same
-    // for each changeSet.  that's a simplification and we should not
-    // depend on it.
-
-    requestObject = {
-      url,
-      method,
-      headers,
-      body: body,
-    };
-  } else {
-    // we should only inform
-    requestObject = { url, method, headers };
-  }
-
+  //Logging
   if (process.env['DEBUG_DELTA_SEND'])
-    console.log(`Executing send ${method} to ${url}`);
+    console.log(
+      `Executing send ${requestObject.method} to ${entry.callback.url}`
+    );
 
-  request(requestObject, function (error, response /*, body*/) {
-    if (error) {
-      console.log(`Could not send request ${method} ${url}`);
-      console.log(error);
-      console.log('NOT RETRYING'); // TODO: retry a few times when delta's fail to send
-    }
-
-    if (response) {
-      // console.log( body );
-    }
-  });
+  try {
+    await fetch(entry.callback.url, requestObject);
+  } catch (error) {
+    console.log(
+      `Could not send request ${requestObject.method} ${entry.callback.url}`
+    );
+    console.log(error);
+    console.log('NOT RETRYING AFTER ERROR');
+    // TODO: retry a few times when delta's fail to send
+  }
 }
 
 async function filterMatchesForOrigin(changeSets, entry) {

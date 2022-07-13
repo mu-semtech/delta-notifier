@@ -23,7 +23,7 @@
   },
   "homepage": "https://github.com/mu-semtech/delta-notifier#readme",
   "dependencies": {
-    "request": "^2.88.0"
+    "node-fetch": "^3.2.8"
   },
   "devDependencies": {
     "eslint": "^8.19.0",
