@@ -26,10 +26,8 @@ app.get('/', function (req, res) {
 });
 
 app.post('/', function (req, res) {
-  if (process.env['LOG_REQUESTS']) {
-    console.log('Logging request body');
-    console.log(req.body);
-  }
+  if (process.env['LOG_REQUESTS'])
+    console.log('Logging request body', req.body);
 
   const changeSets = req.body.changeSets;
 
@@ -64,6 +62,8 @@ async function informWatchers(changeSets, res, muCallIdTrail) {
       changeSets,
       entry
     );
+
+    //Logging
     if (
       process.env['DEBUG_TRIPLE_MATCHES_SPEC'] &&
       entry.options.ignoreFromSelf
@@ -74,37 +74,26 @@ async function informWatchers(changeSets, res, muCallIdTrail) {
         } changes sets not from ${hostnameForEntry(entry)}`
       );
 
-    let allInserts = [];
-    let allDeletes = [];
-
-    originFilteredChangeSets.forEach((change) => {
-      allInserts = [...allInserts, ...change.insert];
-      allDeletes = [...allDeletes, ...change.delete];
-    });
-
-    const changedTriples = [...allInserts, ...allDeletes];
-
-    const someTripleMatchedSpec = changedTriples.some((triple) =>
-      tripleMatchesSpec(triple, matchSpec)
+    const matchSpecFilteredChangeSets = await filterChangeSetsForMatchSpec(
+      originFilteredChangeSets,
+      matchSpec
     );
 
-    if (process.env['DEBUG_TRIPLE_MATCHES_SPEC'])
-      console.log(`Triple matches spec? ${someTripleMatchedSpec}`);
-
-    if (someTripleMatchedSpec) {
-      // inform matching entities
+    if (matchSpecFilteredChangeSets.length > 0) {
+      //Logging
       if (process.env['DEBUG_DELTA_SEND'])
         console.log(
           `Going to send ${entry.callback.method} to ${entry.callback.url}`
         );
 
+      // inform matching entities
       if (entry.options && entry.options.gracePeriod) {
         setTimeout(
-          () => sendRequest(entry, originFilteredChangeSets, muCallIdTrail),
+          () => sendRequest(entry, matchSpecFilteredChangeSets, muCallIdTrail),
           entry.options.gracePeriod
         );
       } else {
-        sendRequest(entry, originFilteredChangeSets, muCallIdTrail);
+        sendRequest(entry, matchSpecFilteredChangeSets, muCallIdTrail);
       }
     }
   });
@@ -112,6 +101,8 @@ async function informWatchers(changeSets, res, muCallIdTrail) {
 
 function tripleMatchesSpec(triple, matchSpec) {
   // form of triple is {s, p, o}, same as matchSpec
+
+  //Logging
   if (process.env['DEBUG_TRIPLE_MATCHES_SPEC'])
     console.log(
       `Does ${JSON.stringify(triple)} match ${JSON.stringify(matchSpec)}?`
@@ -122,13 +113,48 @@ function tripleMatchesSpec(triple, matchSpec) {
     const subMatchSpec = matchSpec[key];
     const subMatchValue = triple[key];
 
-    if (subMatchSpec && !subMatchValue) return false;
+    if (subMatchSpec && !subMatchValue) {
+      //Logging
+      if (process.env['DEBUG_TRIPLE_MATCHES_SPEC'])
+        console.log('Triple matches spec? NO');
+      return false;
+    }
 
     // we're now matching something like {type: "url", value: "http..."}
     for (let subKey in subMatchSpec)
-      if (subMatchSpec[subKey] !== subMatchValue[subKey]) return false;
+      if (subMatchSpec[subKey] !== subMatchValue[subKey]) {
+        //Logging
+        if (process.env['DEBUG_TRIPLE_MATCHES_SPEC'])
+          console.log('Triple matches spec? NO');
+        return false;
+      }
   }
+
+  //Logging
+  if (process.env['DEBUG_TRIPLE_MATCHES_SPEC'])
+    console.log('Triple matches spec? YES');
   return true; // no false matches found, let's send a response
+}
+
+async function filterChangeSetsForMatchSpec(changeSets, matchSpec) {
+  return changeSets
+    .map((changeSet) => {
+      changeSet.insert = changeSet.insert.filter((triple) =>
+        tripleMatchesSpec(triple, matchSpec)
+      );
+      changeSet.delete = changeSet.delete.filter((triple) =>
+        tripleMatchesSpec(triple, matchSpec)
+      );
+      return changeSet;
+    })
+    .reduce((accumulator, changeSet) => {
+      if (
+        changeSet &&
+        (changeSet.insert.length > 0 || changeSet.delete.length > 0)
+      )
+        accumulator.push(changeSet);
+      return accumulator;
+    }, []);
 }
 
 function formatChangesetBody(changeSets, options) {
@@ -194,12 +220,17 @@ async function sendRequest(entry, changeSets, muCallIdTrail) {
 
   try {
     await fetch(entry.callback.url, requestObject);
+    //Logging
+    if (process.env['DEBUG_DELTA_SEND'])
+      console.log(
+        `Send ${requestObject.method} to ${entry.callback.url} successful`
+      );
   } catch (error) {
-    console.log(
+    console.error(
       `Could not send request ${requestObject.method} ${entry.callback.url}`
     );
-    console.log(error);
-    console.log('NOT RETRYING AFTER ERROR');
+    console.error(error);
+    console.error('NOT RETRYING AFTER ERROR');
     // TODO: retry a few times when delta's fail to send
   }
 }
