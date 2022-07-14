@@ -53,6 +53,7 @@ app.post('/', function (req, res) {
 async function informWatchers(changeSets, res, muCallIdTrail) {
   services.map(async (entry) => {
     // for each entity
+    //Logging
     if (process.env['DEBUG_DELTA_MATCH'])
       console.log(`Checking if we want to send to ${entry.callback.url}`);
 
