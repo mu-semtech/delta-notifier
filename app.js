@@ -51,40 +51,77 @@ async function informWatchers( changeSets, res, muCallIdTrail ){
     if( process.env["DEBUG_DELTA_MATCH"] )
       console.log(`Checking if we want to send to ${entry.callback.url}`);
 
-    const matchSpec = entry.match;
-
-    const originFilteredChangeSets = await filterMatchesForOrigin( changeSets, entry );
-    if( process.env["DEBUG_TRIPLE_MATCHES_SPEC"] && entry.options.ignoreFromSelf )
-      console.log(`There are ${originFilteredChangeSets.length} changes sets not from ${hostnameForEntry( entry )}`);
+    const originFilteredChangeSets = await filterMatchesForOrigin(
+      changeSets,
+      entry
+    );
+    if (
+      process.env["DEBUG_TRIPLE_MATCHES_SPEC"] &&
+      entry.options.ignoreFromSelf
+    )
+      console.log(
+        `There are ${
+          originFilteredChangeSets.length
+        } changes sets not from ${hostnameForEntry(entry)}`
+      );
 
     let allInserts = [];
     let allDeletes = [];
 
-    originFilteredChangeSets.forEach( (change) => {
+    originFilteredChangeSets.forEach((change) => {
       allInserts = [...allInserts, ...change.insert];
       allDeletes = [...allDeletes, ...change.delete];
-    } );
+    });
 
     const changedTriples = [...allInserts, ...allDeletes];
+    let matchedSets = [];
 
-    const someTripleMatchedSpec =
-        changedTriples
-        .some( (triple) => tripleMatchesSpec( triple, matchSpec ) );
+    if (entry.subjectMatch) {
+      let changedTriplesPerMatch = [];
+      for (let spec of entry.subjectMatch) {
+        let localMatches = allInserts.filter((triple) =>
+          tripleMatchesSpec(triple, spec)
+        );
+        changedTriplesPerMatch.push(localMatches);
+      }
+      let subjectSets = changedTriplesPerMatch.map(
+        (changes) => new Set(changes.map((change) => change.subject.value))
+      );
+      let subjects = subjectSets[0];
+      for (let set of subjectSets) {
+        subjects = new Set([...subjects].filter((e) => set.has(e)));
+      }
+      let changes = [];
+      for (let changedTripleSet of changedTriplesPerMatch) {
+        changedTripleSet.forEach((change) => {
+          if (subjects.has(change.subject.value)) changes.push(change);
+        });
+      }
+      if (changes) {
+        let changeSet = originFilteredChangeSets[0] || {};
+        changeSet.inserts = changes;
+        matchedSets = [changeSet];
+      }
+    } else {
+      if (changedTriples.some((triple) => tripleMatchesSpec(triple, entry.match)))
+        matchedSets = originFilteredChangeSets;
+    }
 
-    if( process.env["DEBUG_TRIPLE_MATCHES_SPEC"] )
-      console.log(`Triple matches spec? ${someTripleMatchedSpec}`);
+    if (process.env["DEBUG_TRIPLE_MATCHES_SPEC"])
+      console.log(`How many triples match spec? ${matchedSets.length}`);
 
-    if( someTripleMatchedSpec ) {
+    if (matchedSets.length) {
       // inform matching entities
       if( process.env["DEBUG_DELTA_SEND"] )
         console.log(`Going to send ${entry.callback.method} to ${entry.callback.url}`);
 
       if( entry.options && entry.options.gracePeriod ) {
         setTimeout(
-          () => sendRequest( entry, originFilteredChangeSets, muCallIdTrail ),
-          entry.options.gracePeriod );
+          () => sendRequest(entry, matchedSets, muCallIdTrail),
+          entry.options.gracePeriod
+        );
       } else {
-        sendRequest( entry, originFilteredChangeSets, muCallIdTrail );
+        sendRequest(entry, matchedSets, muCallIdTrail);
       }
     }
   } );
