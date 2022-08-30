@@ -85,6 +85,7 @@ async function informWatchers( changeSets, res, muCallIdTrail ){
     let matchedSets = [];
 
     if (entry.subjectMatch) {
+      // check inserts
       let changedTriplesPerMatch = [];
       for (let spec of entry.subjectMatch) {
         let localMatches = allInserts.filter((triple) =>
@@ -108,7 +109,36 @@ async function informWatchers( changeSets, res, muCallIdTrail ){
       if (changes) {
         let changeSet = originFilteredChangeSets[0] || {};
         changeSet.inserts = changes;
-        matchedSets = [changeSet];
+        changeSet.deletes = [];
+        matchedSets.push(changeSet);
+      }
+
+      // Check deletes
+      changedTriplesPerMatch = [];
+      for (let spec of entry.subjectMatch) {
+        let localMatches = allDeletes.filter((triple) =>
+          tripleMatchesSpec(triple, spec)
+        );
+        changedTriplesPerMatch.push(localMatches);
+      }
+      subjectSets = changedTriplesPerMatch.map(
+        (changes) => new Set(changes.map((change) => change.subject.value))
+      );
+       subjects = subjectSets[0];
+      for (let set of subjectSets) {
+        subjects = new Set([...subjects].filter((e) => set.has(e)));
+      }
+      changes = [];
+      for (let changedTripleSet of changedTriplesPerMatch) {
+        changedTripleSet.forEach((change) => {
+          if (subjects.has(change.subject.value)) changes.push(change);
+        });
+      }
+      if (changes) {
+        let changeSet = originFilteredChangeSets[0] || {};
+        changeSet.inserts = [];
+        changeSet.deletes = changes;
+        matchedSets.push(changeSet);
       }
     } else {
       if (changedTriples.some((triple) => tripleMatchesSpec(triple, entry.match)))
