@@ -70,6 +70,11 @@ The exported property contains an array of definitions, each linking a match to 
   - `options.gracePeriod`: Only send the response after a certain amount of time.  This will group changes in the future.
   - `options.ignoreFromSelf`: Don't inform about changes that originated from the microservice to be informed (based on the hostname).
 
+### Delta messages cache
+
+The incoming delta messages are cached, since a match can cross multiple incoming delta messages.
+The timeout of this cache can be configured in ms using the `CACHE_TIMEOUT` environment variable.
+
 ## Delta formats
 
 The delta may be offered in multiple formats.  Versions should match the exact string.  Specify `options.resourceFormat` to indicate the specific resourceformat.

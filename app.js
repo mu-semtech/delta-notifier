@@ -45,14 +45,25 @@ app.post( '/', function( req, res ) {
   res.status(204).send();
 } );
 
+let changeSetsCache = []
+let cacheTimeout = parseInt(process.env.CACHE_TIMEOUT || 2500);
+
 async function informWatchers( changeSets, res, muCallIdTrail ){
+  // HACK: the cache is a list of lists that each contain elements and will be emptied after the cacheTimeout is reached
+  let changeSetsCopy = changeSets;
+  changeSetsCache.push(changeSetsCopy);
+  setTimeout(()=>{changeSetsCopy.length=0}, cacheTimeout)
+
+  let usedChangeSets = [].concat(...changeSetsCache)
+  console.log(`Size of changesetscache is ${changeSetsCache.length} length of used changeset ${usedChangeSets.length}`)
+
   services.map( async (entry) => {
     // for each entity
     if( process.env["DEBUG_DELTA_MATCH"] )
       console.log(`Checking if we want to send to ${entry.callback.url}`);
 
     const originFilteredChangeSets = await filterMatchesForOrigin(
-      changeSets,
+      usedChangeSets,
       entry
     );
     if (
@@ -73,8 +84,18 @@ async function informWatchers( changeSets, res, muCallIdTrail ){
       allDeletes = [...allDeletes, ...change.delete];
     });
 
+
     const changedTriples = [...allInserts, ...allDeletes];
     let matchedSets = [];
+
+    // TODO: add current changeset to cache with timeout
+    // HACK: the cache is a list of lists that each contain elements and will be emptied after the cacheTimeout is reached
+    //allInsertsCache.push(allInserts);
+    //setTimeout(()=>{allInserts.length=0}, cacheTimeout)
+    //allDeletesCache.push(allDeletes);
+    //setTimeout(()=>{allDeletes.length=0}, cacheTimeout)
+    //let cachedInserts = [].concat(...allInsertsCache);
+    //let cachedDeletes = [].concat(...allDeletesCache);
 
     if (entry.subjectMatch) {
       let changedTriplesPerMatch = [];
