@@ -4,6 +4,7 @@ import services from '/config/rules.js';
 import bodyParser from 'body-parser';
 import dns from 'dns';
 import ExpireArray from 'expire-array';
+import ObjectSet from 'object-set-js'
 
 // Also parse application/json as json
 app.use( bodyParser.json( {
@@ -84,61 +85,27 @@ async function informWatchers( changeSets, res, muCallIdTrail ){
     const changedTriples = [...allInserts, ...allDeletes];
     let matchedSets = [];
 
-    if (entry.subjectMatch) {
+    if (entry.extendedMatch) {
+      let variableNames = new Set();
+      let variableOccurences = {}
+      for (let matchSpec of entry.extendedMatch)
+       for (let key in matchSpec)
+        if (matchSpec[key].type === "variable") {
+          let name = matchSpec[key].value
+          variableNames.add(name)
+          variableOccurences[name] = (variableOccurences[name] || 0) + 1
+        }
+      for (let key in variableOccurences)
+        if (variableOccurences[key] < 2)
+          console.log(`Variable "${key}" is probably misconfigured since it only occurs once`)
       // check inserts
-      let changedTriplesPerMatch = [];
-      for (let spec of entry.subjectMatch) {
-        let localMatches = allInserts.filter((triple) =>
-          tripleMatchesSpec(triple, spec)
-        );
-        changedTriplesPerMatch.push(localMatches);
-      }
-      let subjectSets = changedTriplesPerMatch.map(
-        (changes) => new Set(changes.map((change) => change.subject.value))
-      );
-      let subjects = subjectSets[0];
-      for (let set of subjectSets) {
-        subjects = new Set([...subjects].filter((e) => set.has(e)));
-      }
-      let changes = [];
-      for (let changedTripleSet of changedTriplesPerMatch) {
-        changedTripleSet.forEach((change) => {
-          if (subjects.has(change.subject.value)) changes.push(change);
-        });
-      }
-      if (changes) {
-        let changeSet = originFilteredChangeSets[0] || {};
-        changeSet.inserts = changes;
-        changeSet.deletes = [];
-        matchedSets.push(changeSet);
+      if (triplesMatchExtendedSpec(allInserts, entry.extendedMatch, variableNames)) {
+        matchedSets = originFilteredChangeSets;
       }
 
       // Check deletes
-      changedTriplesPerMatch = [];
-      for (let spec of entry.subjectMatch) {
-        let localMatches = allDeletes.filter((triple) =>
-          tripleMatchesSpec(triple, spec)
-        );
-        changedTriplesPerMatch.push(localMatches);
-      }
-      subjectSets = changedTriplesPerMatch.map(
-        (changes) => new Set(changes.map((change) => change.subject.value))
-      );
-       subjects = subjectSets[0];
-      for (let set of subjectSets) {
-        subjects = new Set([...subjects].filter((e) => set.has(e)));
-      }
-      changes = [];
-      for (let changedTripleSet of changedTriplesPerMatch) {
-        changedTripleSet.forEach((change) => {
-          if (subjects.has(change.subject.value)) changes.push(change);
-        });
-      }
-      if (changes) {
-        let changeSet = originFilteredChangeSets[0] || {};
-        changeSet.inserts = [];
-        changeSet.deletes = changes;
-        matchedSets.push(changeSet);
+      if (triplesMatchExtendedSpec(allDeletes, entry.extendedMatch, variableNames)) {
+        matchedSets = originFilteredChangeSets;
       }
     } else {
       if (changedTriples.some((triple) => tripleMatchesSpec(triple, entry.match)))
@@ -178,6 +145,9 @@ function tripleMatchesSpec( triple, matchSpec ) {
     if( subMatchSpec && !subMatchValue )
       return false;
 
+    if (subMatchSpec.type === "variable")
+      continue;
+
     for( let subKey in subMatchSpec )
       // we're now matching something like {type: "url", value: "http..."}
       if( subMatchSpec[subKey] !== subMatchValue[subKey] )
@@ -186,6 +156,64 @@ function tripleMatchesSpec( triple, matchSpec ) {
   return true; // no false matches found, let's send a response
 }
 
+function triplesMatchExtendedSpec(allDelta, matchSpec, variableNames) {
+    let changedTriplesPerMatch = [];
+    for (let spec of matchSpec) {
+      let localMatches = allDelta.filter((triple) =>
+        tripleMatchesSpec(triple, spec)
+      );
+      changedTriplesPerMatch.push({spec: spec, matches: localMatches});
+    }
+    let variables = {}
+    for (let variable of variableNames) {
+        variables[variable] = new ObjectSet();
+    }
+    changedTriplesPerMatch.forEach((o)=>{
+        for (let e in o.spec) {
+            let s = o.spec[e]
+            if (s.type === "variable") for (let triple of o.matches) {
+                variables[s.value].add({value: triple[e], graph: triple.graph})
+            }
+        }
+    })
+    let combinations = allCombinations(variables)
+    let validCombinations = [];
+    for (let combination of combinations){
+        let combinationIsValid = true;
+        for (let idx in matchSpec){
+            let localSpec = Object.assign({}, matchSpec[idx])
+            for (let key in localSpec) {
+                let type = localSpec[key].type;
+                let varName = localSpec[key].value;
+                if (type === "variable"){
+                    let val = combination[varName].value
+                    localSpec[varName] = combination[varName].value
+                    localSpec.graph = combination[varName].graph
+                }
+            }
+            if (![...changedTriplesPerMatch[idx].matches].some(t => tripleMatchesSpec(t, localSpec))) {
+                // TODO: add possible fetch
+                combinationIsValid = false;
+            }
+        }
+        validCombinations.push(combination)
+    }
+    return validCombinations.length > 0
+}
+
+function allCombinations(obj) {
+  let combos = [{}];
+  Object.entries(obj).forEach(([key, values]) => {
+    let all = [];
+    values.forEach((value) => {
+      combos.forEach((combo) => {
+        all.push(Object.assign({[key]: value}, combo));
+      });
+    });
+    combos = all;
+  });
+  return combos;
+}
 
 function formatChangesetBody( changeSets, options ) {
   if( options.resourceFormat == "v0.0.1" ) {
