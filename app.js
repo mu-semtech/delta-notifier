@@ -1,4 +1,4 @@
-import { app, uuid } from 'mu';
+import { app, uuid, query } from 'mu';
 import request from 'request';
 import services from '/config/rules.js';
 import bodyParser from 'body-parser';
@@ -96,15 +96,20 @@ async function informWatchers( changeSets, res, muCallIdTrail ){
           variableOccurences[name] = (variableOccurences[name] || 0) + 1
         }
       for (let key in variableOccurences)
-        if (variableOccurences[key] < 2)
+        if (variableOccurences[key] === 1)
           console.log(`Variable "${key}" is probably misconfigured since it only occurs once`)
+      if (variableNames.size === 0) {
+        console.log(`There are no variables configured`)
+      }
+
       // check inserts
-      if (triplesMatchExtendedSpec(allInserts, entry.extendedMatch, variableNames)) {
+      let fetchMissing = process.env["FETCH_MISSING_MATCHES"] !== "false";
+      if (await triplesMatchExtendedSpec(allInserts, entry.extendedMatch, variableNames, fetchMissing)) {
         matchedSets = originFilteredChangeSets;
       }
 
       // Check deletes
-      if (triplesMatchExtendedSpec(allDeletes, entry.extendedMatch, variableNames)) {
+      if (await triplesMatchExtendedSpec(allDeletes, entry.extendedMatch, variableNames, false)) {
         matchedSets = originFilteredChangeSets;
       }
     } else {
@@ -156,7 +161,7 @@ function tripleMatchesSpec( triple, matchSpec ) {
   return true; // no false matches found, let's send a response
 }
 
-function triplesMatchExtendedSpec(allDelta, matchSpec, variableNames) {
+async function triplesMatchExtendedSpec(allDelta, matchSpec, variableNames, fetchMissing) {
     let changedTriplesPerMatch = [];
     for (let spec of matchSpec) {
       let localMatches = allDelta.filter((triple) =>
@@ -186,19 +191,68 @@ function triplesMatchExtendedSpec(allDelta, matchSpec, variableNames) {
                 let type = localSpec[key].type;
                 let varName = localSpec[key].value;
                 if (type === "variable"){
-                    let val = combination[varName].value
-                    localSpec[varName] = combination[varName].value
+                    localSpec[key] = combination[varName].value
                     localSpec.graph = combination[varName].graph
                 }
             }
             if (![...changedTriplesPerMatch[idx].matches].some(t => tripleMatchesSpec(t, localSpec))) {
-                // TODO: add possible fetch
-                combinationIsValid = false;
+                let matched = await fetchMissingMatch(localSpec, fetchMissing)
+                if (matched === null)
+                    combinationIsValid = false;
             }
         }
-        validCombinations.push(combination)
+        if (combinationIsValid) {
+            validCombinations.push(combination)
+        }
     }
+    console.log(`The number of valid combinations is ${validCombinations.length}`)
     return validCombinations.length > 0
+}
+
+async function fetchMissingMatch(match, fetchMissing) {
+    if (!fetchMissing)
+        return null
+    else {
+        let qMatch = {}
+        let selectParts = []
+        for (let key of ["subject", "predicate", "object", "graph"]) {
+            let matchObject = match[key] || {type: ""}
+            if (matchObject.type === "uri") {
+                qMatch[key] = `<${matchObject.value}>`
+            } else {
+                qMatch[key] = `?${key}`
+                selectParts.push(qMatch[key])
+            }
+        }
+        let q=`
+        SELECT ${selectParts.join(" ")}
+        WHERE {
+            GRAPH ${qMatch.graph} {
+                ${qMatch.subject} ${qMatch.predicate} ${qMatch.object} .
+            }
+        }
+        LIMIT 1
+        `
+        return await query(q)
+        .then((result) =>
+            {
+                let results = result["results"]
+                if ("bindings" in results) {
+                    let values = results.bindings[0]
+                    for (let key in values) {
+                        console.log(`Key is ${key}`)
+                        match[key] = values[key]
+                    }
+                }
+                return match
+            }
+        ).catch((err) =>
+            {
+                console.error(`Error ${err} happened`)
+                return null
+            }
+        )
+    }
 }
 
 function allCombinations(obj) {
