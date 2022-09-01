@@ -44,6 +44,16 @@ export default [
       // form of element is {subject,predicate,object}
       // predicate: { type: "uri", value: "http://www.semanticdesktop.org/ontologies/2007/03/22/nmo#isPartOf" }
     },
+    extendedMatch: {
+      // list of elements in form as above
+      [{
+        predicate: { type: "uri", value: "http://www.semanticdesktop.org/ontologies/2007/03/22/nmo#isPartOf" },
+        subject: { type: "variable", "value": "var" }
+      },{
+        predicate: { type: "uri", value: "http://www.semanticdesktop.org/ontologies/2007/03/22/nmo#isPartOf" },
+        object: { type: "variable", "value": "var" }
+      }]
+    }
     callback: {
       url: "http://resource/.mu/delta", method: "POST"
     },
@@ -62,6 +72,8 @@ The exported property contains an array of definitions, each linking a match to 
   - `match.subject`: Matches the subject.  Both `type` and `value` may be specified.
   - `match.predicate`: Matches the predicade.  Both `type` and `value` may be specified.
   - `match.object`: Matches the object.  Both `type` and `value` may be specified.
+  - `extendedMatch`: A list of patterns to match against. All supplied patterns must match in the delta.
+    A special type `"variable"` can be used in patterns, variables with the same `value` will match to the same value.
   - `callback`: The place to inform about a matched delta
   - `callback.url`: URL to inform about a match
   - `callback.method`: Method to use when informing about a match
@@ -74,6 +86,9 @@ The exported property contains an array of definitions, each linking a match to 
 
 The incoming delta messages are cached, since a match can cross multiple incoming delta messages.
 The timeout of this cache can be configured in ms using the `CACHE_TIMEOUT` environment variable.
+
+When matches can't be found in the cache they will be fetched from the database unless `FETCH_MISSING_MATCHES` is set to `false`
+
 
 ## Delta formats
 
