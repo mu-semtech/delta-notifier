@@ -16,6 +16,8 @@ app.use( bodyParser.json( {
 if( process.env["LOG_SERVER_CONFIGURATION"] )
   console.log(JSON.stringify( services ));
 
+let ignore_unreachable_services = (process.env["IGNORE_UNREACHABLE_SERVICES"]||"").split(',');
+
 app.get( '/', function( req, res ) {
   res.status(200);
   res.send("Hello, delta notification is running");
@@ -53,8 +55,21 @@ async function informWatchers( changeSets, res, muCallIdTrail, muSessionId ){
       console.log(`Checking if we want to send to ${entry.callback.url}`);
 
     const matchSpec = entry.match;
+    let originFilteredChangeSets = [];
 
-    const originFilteredChangeSets = await filterMatchesForOrigin( changeSets, entry );
+    try {
+      originFilteredChangeSets = await filterMatchesForOrigin(changeSets, entry)
+    } catch (error) {
+      // When there's an error, this means the callback url could not be resolved and thus this should be handled
+      let hostname = (new URL(entry.callback.url)).hostname;
+      if (ignore_unreachable_services.filter(a => a === hostname).length === 0) {
+        console.error(`Error happened while filtering, ${hostname} couldn't be resolved`)
+        console.error(`please check that the service is running and the configuration file is correct`)
+        console.error(error)
+      }
+      return
+    }
+
     if( process.env["DEBUG_TRIPLE_MATCHES_SPEC"] && entry.options.ignoreFromSelf )
       console.log(`There are ${originFilteredChangeSets.length} changes sets not from ${hostnameForEntry( entry )}`);
 
