@@ -40,20 +40,10 @@ We first present an example, next we explain each of the properties.  The follow
 ```js
 export default [
   {
-    match: {
+    match: [{
       // form of element is {subject,predicate,object}
       // predicate: { type: "uri", value: "http://www.semanticdesktop.org/ontologies/2007/03/22/nmo#isPartOf" }
-    },
-    extendedMatch: {
-      // list of elements in form as above
-      [{
-        predicate: { type: "uri", value: "http://www.semanticdesktop.org/ontologies/2007/03/22/nmo#isPartOf" },
-        subject: { type: "variable", "value": "var" }
-      },{
-        predicate: { type: "uri", value: "http://www.semanticdesktop.org/ontologies/2007/03/22/nmo#isPartOf" },
-        object: { type: "variable", "value": "var" }
-      }]
-    }
+    }],
     callback: {
       url: "http://resource/.mu/delta", method: "POST"
     },
@@ -68,12 +58,10 @@ export default [
 
 The exported property contains an array of definitions, each linking a match to a callback.
 
-  - `match`: Pattern to match against.  Any supplied key must match, anything unspecified is ignored.
+  - `match`: Pattern to match against.  Any supplied key must match, anything unspecified is ignored.  This should be an array but if it's an array with only one object, you may set the object directly as a short form.  The type "variable" is introduced on top of the triple results json format to bind across triple patterns.
   - `match.subject`: Matches the subject.  Both `type` and `value` may be specified.
   - `match.predicate`: Matches the predicade.  Both `type` and `value` may be specified.
   - `match.object`: Matches the object.  Both `type` and `value` may be specified.
-  - `extendedMatch`: A list of patterns to match against. All supplied patterns must match in the delta.
-    A special type `"variable"` can be used in patterns, variables with the same `value` will match to the same value.
   - `callback`: The place to inform about a matched delta
   - `callback.url`: URL to inform about a match
   - `callback.method`: Method to use when informing about a match
@@ -82,13 +70,51 @@ The exported property contains an array of definitions, each linking a match to 
   - `options.gracePeriod`: Only send the response after a certain amount of time.  This will group changes in the future.
   - `options.ignoreFromSelf`: Don't inform about changes that originated from the microservice to be informed (based on the hostname).
 
-### Delta messages cache
+### Advanced match patterns
+A variable type indicates the connection point between parts of the pattern.  This behaves similarly to a trivial WHERE block of a SPARQL query.
 
-The incoming delta messages are cached, since a match can cross multiple incoming delta messages.
-The timeout of this cache can be configured in ms using the `CACHE_TIMEOUT` environment variable.
+The delta-notifier will cache inserts and deletes for a preset amount of time which is configurable in `CACHE_TIMEOUT`. When matches can't be found in the cache they will be fetched from the database unless `FETCH_MISSING_MATCHES` is set to `false`.
 
-When matches can't be found in the cache they will be fetched from the database unless `FETCH_MISSING_MATCHES` is set to `false`
+```js
+export default [
+  {
+    match: [{
+        subject: { type: "variable", "value": "person" },
+        predicate: { type: "uri", value: "http://www.w3.org/1999/02/22-rdf-syntax-ns#type" },
+        object: { type: "uri", value: "http://xmlns.com/foaf/0.1/Person" }
+      },{
+        subject: { type: "variable", "value": "person" },
+        predicate: { type: "uri", value: "http://xmlns.com/foaf/0.1/mbox" }
+      }],
+    callback: {
+      url: "http://resource/.mu/delta", method: "POST"
+    },
+    options: {
+      resourceFormat: "v0.0.1",
+      gracePeriod: 1000,
+      ignoreFromSelf: true
+    }
+  }
+]
+```
 
+
+
+An example for receiving all changes which originate from a given type:
+
+```js
+export default [
+  {
+    match: [{
+      subject: { type: "variable", "value": "person" },
+      predicate: { type: "uri", value: "http://www.w3.org/1999/02/22-rdf-syntax-ns#type" },
+      object: { type: "uri", value: "http://xmlns.com/foaf/0.1/Person" }
+    },{
+      subject: { type: "variable", "value": "person" }
+    }]
+  }
+]
+```
 
 ## Delta formats
 

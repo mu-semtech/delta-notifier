@@ -24,6 +24,7 @@
   "dependencies": {
     "expire-array": "^1.1.0",
     "object-set-js": "^1.0.3",
-    "request": "^2.88.0"
+    "request": "^2.88.0",
+    "@lblod/mu-auth-sudo": "^0.6.0"
   }
 }

@@ -1,10 +1,16 @@
 import { app, uuid, query } from 'mu';
 import request from 'request';
-import services from '/config/rules.js';
+import rules from './config/rules';
 import bodyParser from 'body-parser';
 import dns from 'dns';
 import ExpireArray from 'expire-array';
-import ObjectSet from 'object-set-js'
+import ObjectSet from 'object-set-js';
+import discoverBindings from './lib/pattern-matching';
+
+const cacheTimeout = parseInt(process.env.CACHE_TIMEOUT || 2500);
+const changeSetsCache = new ExpireArray(cacheTimeout);
+
+const fetchMissingMatchesFromDatabase = process.env["FETCH_MISSING_MATCHES"] !== "false";
 
 // Also parse application/json as json
 app.use( bodyParser.json( {
@@ -16,7 +22,7 @@ app.use( bodyParser.json( {
 
 // Log server config if requested
 if( process.env["LOG_SERVER_CONFIGURATION"] )
-  console.log(JSON.stringify( services ));
+  console.log(JSON.stringify( rules ));
 
 app.get( '/', function( req, res ) {
   res.status(200);
@@ -40,29 +46,26 @@ app.post( '/', function( req, res ) {
     change.delete = change.delete || [];
   } );
 
+  // update changeset cache for match patterns
+  changeSets.forEach(s=>{changeSetsCache.push(s);});
+
   // inform watchers
-    informWatchers( changeSets, res, muCallIdTrail );
+  informWatchers( changeSets, res, muCallIdTrail );
 
   // push relevant data to interested actors
   res.status(204).send();
 } );
 
-let cacheTimeout = parseInt(process.env.CACHE_TIMEOUT || 2500);
-const changeSetsCache = new ExpireArray(cacheTimeout);
+async function informWatchers( changeSets, _res, muCallIdTrail ){
+  let usedChangeSets = changeSetsCache.all();
 
-async function informWatchers( changeSets, res, muCallIdTrail ){
-  changeSets.forEach(s=>{changeSetsCache.push(s)})
-  let usedChangeSets = changeSetsCache.all()
-
-  services.map( async (entry) => {
+  rules.map( async (entry) => {
     // for each entity
     if( process.env["DEBUG_DELTA_MATCH"] )
       console.log(`Checking if we want to send to ${entry.callback.url}`);
 
-    const originFilteredChangeSets = await filterMatchesForOrigin(
-      usedChangeSets,
-      entry
-    );
+    const originFilteredChangeSets = await filterMatchesForOrigin( changeSets, entry );
+
     if (
       process.env["DEBUG_TRIPLE_MATCHES_SPEC"] &&
       entry.options.ignoreFromSelf
@@ -81,41 +84,54 @@ async function informWatchers( changeSets, res, muCallIdTrail ){
       allDeletes = [...allDeletes, ...change.delete];
     });
 
-
     const changedTriples = [...allInserts, ...allDeletes];
-    let matchedSets = [];
 
-    if (entry.extendedMatch) {
-      let variableNames = new Set();
-      let variableOccurences = {}
-      for (let matchSpec of entry.extendedMatch)
-       for (let key in matchSpec)
+
+    const matchedSets = [];
+
+    // Ensure match is an array
+    entry.match = Array.isArray( entry.match ) ? entry.match : [entry.match];
+
+    // Scan match patterns
+    // TODO: this is static calculation from the configuration and should be done on startup
+    const variableOccurrences = {};
+
+    for (const matchSpec of entry.match) {
+      for (const key in matchSpec) {
         if (matchSpec[key].type === "variable") {
-          let name = matchSpec[key].value
-          variableNames.add(name)
-          variableOccurences[name] = (variableOccurences[name] || 0) + 1
+          const name = matchSpec[key].value;
+          variableOccurrences[name] = (variableOccurrences[name] || 0) + 1;
         }
-      for (let key in variableOccurences)
-        if (variableOccurences[key] === 1)
-          console.log(`Variable "${key}" is probably misconfigured since it only occurs once`)
-      if (variableNames.size === 0) {
-        console.log(`There are no variables configured`)
       }
-
-      // check inserts
-      let fetchMissing = process.env["FETCH_MISSING_MATCHES"] !== "false";
-      if (await triplesMatchExtendedSpec(allInserts, entry.extendedMatch, variableNames, fetchMissing)) {
-        matchedSets = originFilteredChangeSets;
-      }
-
-      // Check deletes
-      if (await triplesMatchExtendedSpec(allDeletes, entry.extendedMatch, variableNames, false)) {
-        matchedSets = originFilteredChangeSets;
-      }
-    } else {
-      if (changedTriples.some((triple) => tripleMatchesSpec(triple, entry.match)))
-        matchedSets = originFilteredChangeSets;
     }
+
+    const variableNames = Object.keys(variableOccurrences);
+
+    // TODO: do we want to advice against using variables?  It may clarify the configuration.
+    for (const key in variableOccurrences)
+      if (variableOccurrences[key] === 1)
+        console.log(`Variable "${key}" might be misconfigured since it only occurs once`);
+
+    // TODO: check for disconnected patterns (which may yield cross product)
+    // person(?person) -> ?person a foaf:Person.
+    // name(?person, ?result) -> ?person foaf:name ?result.
+
+    // INSERT { :1 a foaf:Person. :2 a foaf:Person. }
+
+    //entry.match = replaceEmptyMatchesWithVariables(entry.match);
+
+    debugger;
+
+    const solutions = await discoverBindings( allInserts, entry.match );
+
+    console.log(solutions);
+    debugger;
+
+    // TODO: Send triples
+
+    // TODO: Execute the same for deletes
+
+    // TODO: Remove unused code from above
 
     if (process.env["DEBUG_TRIPLE_MATCHES_SPEC"])
       console.log(`How many triples match spec? ${matchedSets.length}`);
@@ -137,16 +153,17 @@ async function informWatchers( changeSets, res, muCallIdTrail ){
   } );
 }
 
-function tripleMatchesSpec( triple, matchSpec ) {
-  // form of triple is {s, p, o}, same as matchSpec
+function singleTripleMatchesSpec( triple, matchSpec ) {
+  // form of triple is {subject, predicate, object, graph}, same as matchSpec
   if( process.env["DEBUG_TRIPLE_MATCHES_SPEC"] )
     console.log(`Does ${JSON.stringify(triple)} match ${JSON.stringify(matchSpec)}?`);
 
-  for( let key in matchSpec ){
-    // key is one of s, p, o
+  for( let key in matchSpec ) {
+    // key is one of subject, predicate, object, graph
     const subMatchSpec = matchSpec[key];
     const subMatchValue = triple[key];
 
+    // TODO: this should be replaced with a sanity check at configuration time for valid keys of match.
     if( subMatchSpec && !subMatchValue )
       return false;
 
@@ -161,139 +178,32 @@ function tripleMatchesSpec( triple, matchSpec ) {
   return true; // no false matches found, let's send a response
 }
 
-async function triplesMatchExtendedSpec(allDelta, matchSpec, variableNames, fetchMissing) {
-    let changedTriplesPerMatch = [];
-    for (let spec of matchSpec) {
-      let localMatches = allDelta.filter((triple) =>
-        tripleMatchesSpec(triple, spec)
-      );
-      changedTriplesPerMatch.push({spec: spec, matches: localMatches});
-    }
-    let variables = {}
-    for (let variable of variableNames) {
-        variables[variable] = new ObjectSet();
-    }
-    changedTriplesPerMatch.forEach((o)=>{
-        for (let e in o.spec) {
-            let s = o.spec[e]
-            if (s.type === "variable") for (let triple of o.matches) {
-                variables[s.value].add({value: triple[e], graph: triple.graph})
-            }
-        }
-    })
-    let combinations = allCombinations(variables)
-    let validCombinations = [];
-    for (let combination of combinations){
-        let combinationIsValid = true;
-        for (let idx in matchSpec){
-            let localSpec = Object.assign({}, matchSpec[idx])
-            for (let key in localSpec) {
-                let type = localSpec[key].type;
-                let varName = localSpec[key].value;
-                if (type === "variable"){
-                    localSpec[key] = combination[varName].value
-                    localSpec.graph = combination[varName].graph
-                }
-            }
-            if (![...changedTriplesPerMatch[idx].matches].some(t => tripleMatchesSpec(t, localSpec))) {
-                let matched = await fetchMissingMatch(localSpec, fetchMissing)
-                if (matched === null)
-                    combinationIsValid = false;
-            }
-        }
-        if (combinationIsValid) {
-            validCombinations.push(combination)
-        }
-    }
-    console.log(`The number of valid combinations is ${validCombinations.length}`)
-    return validCombinations.length > 0
-}
 
-async function fetchMissingMatch(match, fetchMissing) {
-    if (!fetchMissing)
-        return null
-    else {
-        let qMatch = {}
-        let selectParts = []
-        for (let key of ["subject", "predicate", "object", "graph"]) {
-            let matchObject = match[key] || {type: ""}
-            if (matchObject.type === "uri") {
-                qMatch[key] = `<${matchObject.value}>`
-            } else {
-                qMatch[key] = `?${key}`
-                selectParts.push(qMatch[key])
-            }
-        }
-        let q=`
-        SELECT ${selectParts.join(" ")}
-        WHERE {
-            GRAPH ${qMatch.graph} {
-                ${qMatch.subject} ${qMatch.predicate} ${qMatch.object} .
-            }
-        }
-        LIMIT 1
-        `
-        return await query(q)
-        .then((result) =>
-            {
-                let results = result["results"]
-                if ("bindings" in results) {
-                    let values = results.bindings[0]
-                    for (let key in values) {
-                        console.log(`Key is ${key}`)
-                        match[key] = values[key]
-                    }
-                }
-                return match
-            }
-        ).catch((err) =>
-            {
-                console.error(`Error ${err} happened`)
-                return null
-            }
-        )
-    }
-}
-
-function allCombinations(obj) {
-  let combos = [{}];
-  Object.entries(obj).forEach(([key, values]) => {
-    let all = [];
-    values.forEach((value) => {
-      combos.forEach((combo) => {
-        all.push(Object.assign({[key]: value}, combo));
-      });
-    });
-    combos = all;
-  });
-  return combos;
-}
-
-function formatChangesetBody( changeSets, options ) {
-  if( options.resourceFormat == "v0.0.1" ) {
+function formatChangesetBody(changeSets, options) {
+  if (options.resourceFormat == "v0.0.1") {
     return JSON.stringify(
-      changeSets.map( (change) => {
+      changeSets.map((change) => {
         return {
           inserts: change.insert,
           deletes: change.delete
         };
-      } ) );
+      }));
   }
-  if( options.resourceFormat == "v0.0.0-genesis" ) {
+  if (options.resourceFormat == "v0.0.0-genesis") {
     // [{delta: {inserts, deletes}]
     const newOptions = Object.assign({}, options, { resourceFormat: "v0.0.1" });
-    const newFormat = JSON.parse( formatChangesetBody( changeSets, newOptions ) );
+    const newFormat = JSON.parse(formatChangesetBody(changeSets, newOptions));
     return JSON.stringify({
       // graph: Not available
       delta: {
         inserts: newFormat
-          .flatMap( ({inserts}) => inserts)
-          .map( ({subject,predicate,object}) =>
-                ( { s: subject.value, p: predicate.value, o: object.value } ) ),
+          .flatMap(({ inserts }) => inserts)
+          .map(({ subject, predicate, object }) =>
+            ({ s: subject.value, p: predicate.value, o: object.value })),
         deletes: newFormat
-          .flatMap( ({deletes}) => deletes)
-          .map( ({subject,predicate,object}) =>
-                ( { s: subject.value, p: predicate.value, o: object.value } ) )
+          .flatMap(({ deletes }) => deletes)
+          .map(({ subject, predicate, object }) =>
+            ({ s: subject.value, p: predicate.value, o: object.value }))
       }
     });
   } else {
@@ -301,7 +211,7 @@ function formatChangesetBody( changeSets, options ) {
   }
 }
 
-async function sendRequest( entry, changeSets, muCallIdTrail ) {
+async function sendRequest(entry, changeSets, muCallIdTrail) {
   let requestObject; // will contain request information
 
   // construct the requestObject
@@ -309,9 +219,9 @@ async function sendRequest( entry, changeSets, muCallIdTrail ) {
   const url = entry.callback.url;
   const headers = { "Content-Type": "application/json", "MU-AUTH-ALLOWED-GROUPS": changeSets[0].allowedGroups, "mu-call-id-trail": muCallIdTrail, "mu-call-id": uuid() };
 
-  if( entry.options && entry.options.resourceFormat ) {
+  if (entry.options && entry.options.resourceFormat) {
     // we should send contents
-    const body = formatChangesetBody( changeSets, entry.options );
+    const body = formatChangesetBody(changeSets, entry.options);
 
     // TODO: we now assume the mu-auth-allowed-groups will be the same
     // for each changeSet.  that's a simplification and we should not
@@ -327,43 +237,43 @@ async function sendRequest( entry, changeSets, muCallIdTrail ) {
     requestObject = { url, method, headers };
   }
 
-  if( process.env["DEBUG_DELTA_SEND"] )
+  if (process.env["DEBUG_DELTA_SEND"])
     console.log(`Executing send ${method} to ${url}`);
 
-  request( requestObject, function( error, response, body ) {
-    if( error ) {
+  request(requestObject, function (error, response, body) {
+    if (error) {
       console.log(`Could not send request ${method} ${url}`);
       console.log(error);
       console.log(`NOT RETRYING`); // TODO: retry a few times when delta's fail to send
     }
 
-    if( response ) {
+    if (response) {
       // console.log( body );
     }
   });
 }
 
-async function filterMatchesForOrigin( changeSets, entry ) {
-  if( ! entry.options || !entry.options.ignoreFromSelf ) {
+async function filterMatchesForOrigin(changeSets, entry) {
+  if (!entry.options || !entry.options.ignoreFromSelf) {
     return changeSets;
   } else {
-    const originIpAddress = await getServiceIp( entry );
-    return changeSets.filter( (changeSet) => changeSet.origin != originIpAddress );
+    const originIpAddress = await getServiceIp(entry);
+    return changeSets.filter((changeSet) => changeSet.origin != originIpAddress);
   }
 }
 
-function hostnameForEntry( entry ) {
+function hostnameForEntry(entry) {
   return (new URL(entry.callback.url)).hostname;
 }
 
 async function getServiceIp(entry) {
-  const hostName = hostnameForEntry( entry );
-  return new Promise( (resolve, reject) => {
-    dns.lookup( hostName, { family: 4 }, ( err, address) => {
-      if( err )
-        reject( err );
+  const hostName = hostnameForEntry(entry);
+  return new Promise((resolve, reject) => {
+    dns.lookup(hostName, { family: 4 }, (err, address) => {
+      if (err)
+        reject(err);
       else
-        resolve( address );
-    } );
-  } );
+        resolve(address);
+    });
+  });
 };
