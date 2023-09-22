@@ -164,8 +164,14 @@ async function filterMatchesForOrigin( changeSets, entry ) {
   if( ! entry.options || !entry.options.ignoreFromSelf ) {
     return changeSets;
   } else {
-    const originIpAddress = await getServiceIp( entry );
-    return changeSets.filter( (changeSet) => changeSet.origin != originIpAddress );
+    try {
+      const originIpAddress = await getServiceIp( entry );
+      return changeSets.filter( (changeSet) => changeSet.origin != originIpAddress );
+    } catch(e) {
+      console.error(`Could not filter changeset because an error was returned while looking up ip for ${entry.callback.url}`);
+      console.error(e);
+      return changeSets;
+    }
   }
 }
 
