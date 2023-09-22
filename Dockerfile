@@ -1,2 +1,2 @@
-FROM semtech/mu-javascript-template:1.3.5
-LABEL maintainer="madnificent@gmail.com"
+FROM nvdk/mu-javascript-template:feature-node-18
+

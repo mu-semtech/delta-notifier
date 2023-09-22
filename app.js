@@ -1,16 +1,7 @@
 import { app, uuid } from 'mu';
-import request from 'request';
-import services from '/config/rules.js';
+import services from './config/rules.js';
 import bodyParser from 'body-parser';
 import dns from 'dns';
-
-// Also parse application/json as json
-app.use( bodyParser.json( {
-  type: function(req) {
-    return /^application\/json/.test( req.get('content-type') );
-  },
-  limit: '500mb'
-} ) );
 
 // Log server config if requested
 if( process.env["LOG_SERVER_CONFIGURATION"] )
@@ -21,7 +12,7 @@ app.get( '/', function( req, res ) {
   res.send("Hello, delta notification is running");
 } );
 
-app.post( '/', function( req, res ) {
+app.post( '/', bodyParser.json({limit: '500mb'}), function( req, res ) {
   if( process.env["LOG_REQUESTS"] ) {
     console.log("Logging request body");
     console.log(req.body);
@@ -153,38 +144,20 @@ async function sendRequest( entry, changeSets, muCallIdTrail, muSessionId ) {
   const url = entry.callback.url;
   const headers = { "Content-Type": "application/json", "MU-AUTH-ALLOWED-GROUPS": changeSets[0].allowedGroups, "mu-call-id-trail": muCallIdTrail, "mu-call-id": uuid() , "mu-session-id": muSessionId };
 
+  let body;
   if( entry.options && entry.options.resourceFormat ) {
     // we should send contents
-    const body = formatChangesetBody( changeSets, entry.options );
-
-    // TODO: we now assume the mu-auth-allowed-groups will be the same
-    // for each changeSet.  that's a simplification and we should not
-    // depend on it.
-
-    requestObject = {
-      url, method,
-      headers,
-      body: body
-    };
-  } else {
-    // we should only inform
-    requestObject = { url, method, headers };
+    body = formatChangesetBody( changeSets, entry.options );
   }
-
   if( process.env["DEBUG_DELTA_SEND"] )
     console.log(`Executing send ${method} to ${url}`);
-
-  request( requestObject, function( error, response, body ) {
-    if( error ) {
-      console.log(`Could not send request ${method} ${url}`);
-      console.log(error);
-      console.log(`NOT RETRYING`); // TODO: retry a few times when delta's fail to send
-    }
-
-    if( response ) {
-      // console.log( body );
-    }
-  });
+  try {
+    await fetch(url, { method, headers, body });
+  } catch(error) {
+    console.log(`Could not send request ${method} ${url}`);
+    console.log(error);
+    console.log(`NOT RETRYING`); // TODO: retry a few times when delta's fail to send
+  }
 }
 
 async function filterMatchesForOrigin( changeSets, entry ) {
