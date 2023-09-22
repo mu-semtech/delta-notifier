@@ -2,6 +2,7 @@ import { app, uuid } from 'mu';
 import services from './config/rules.js';
 import bodyParser from 'body-parser';
 import dns from 'dns';
+import http from 'http';
 
 // Log server config if requested
 if( process.env["LOG_SERVER_CONFIGURATION"] )
@@ -152,7 +153,10 @@ async function sendRequest( entry, changeSets, muCallIdTrail, muSessionId ) {
   if( process.env["DEBUG_DELTA_SEND"] )
     console.log(`Executing send ${method} to ${url}`);
   try {
-    await fetch(url, { method, headers, body });
+    const keepAliveAgent = new http.Agent({
+      keepAlive: true
+    });
+    await fetch(url, { method, headers, body, agent: keepAliveAgent });
   } catch(error) {
     console.log(`Could not send request ${method} ${url}`);
     console.log(error);
