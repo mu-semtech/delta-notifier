@@ -139,3 +139,5 @@ async function getServiceIp(entry) {
     } );
   } );
 };
+
+app.use(errorHandler);
