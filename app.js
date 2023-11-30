@@ -156,7 +156,10 @@ async function sendRequest( entry, changeSets, muCallIdTrail, muSessionId ) {
     const keepAliveAgent = new http.Agent({
       keepAlive: true
     });
-    await fetch(url, { method, headers, body, agent: keepAliveAgent });
+    const response = await fetch(url, { method, headers, body, agent: keepAliveAgent });
+    if (!response.ok) {
+      console.log(`Call to ${method} ${url} likely failed. Received status ${response.status}.`);
+    }
   } catch(error) {
     console.log(`Could not send request ${method} ${url}`);
     console.log(error);
