@@ -1,5 +1,5 @@
 import { app, uuid } from 'mu';
-import services from './config/rules.js';
+import services from './config/rules';
 import bodyParser from 'body-parser';
 import dns from 'dns';
 import http from 'http';
