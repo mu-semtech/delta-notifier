@@ -70,6 +70,12 @@ The exported property contains an array of definitions, each linking a match to 
   - `options.gracePeriod`: Only send the response after a certain amount of time.  This will group changes in the future.
   - `options.ignoreFromSelf`: Don't inform about changes that originated from the microservice to be informed (based on the hostname).
 
+### Ignoring errors:
+
+Some errors can be ignored, the configuration for it is the following:
+
+- `IGNORE_UNREACHABLE_SERVICES`: a comma-separated list of service names for which the unreachable error should be ignored
+
 ## Delta formats
 
 The delta may be offered in multiple formats.  Versions should match the exact string.  Specify `options.resourceFormat` to indicate the specific resourceformat.
