@@ -3,6 +3,7 @@ import services from './config/rules';
 import bodyParser from 'body-parser';
 import dns from 'dns';
 import { sendRequest } from './send-request';
+import { sendBundledRequest } from './bundle-requests';
 
 // Log server config if requested
 if( process.env["LOG_SERVER_CONFIGURATION"] )
@@ -39,7 +40,8 @@ app.post( '/', bodyParser.json({limit: '500mb'}), function( req, res ) {
 } );
 
 async function informWatchers( changeSets, res, muCallIdTrail, muSessionId ){
-  services.map( async (entry) => {
+  services.map( async (entry, index) => {
+    entry.index = index;
     // for each entity
     if( process.env["DEBUG_DELTA_MATCH"] )
       console.log(`Checking if we want to send to ${entry.callback.url}`);
@@ -73,9 +75,7 @@ async function informWatchers( changeSets, res, muCallIdTrail, muSessionId ){
         console.log(`Going to send ${entry.callback.method} to ${entry.callback.url}`);
 
       if( entry.options && entry.options.gracePeriod ) {
-        setTimeout(
-          () => sendRequest( entry, originFilteredChangeSets, muCallIdTrail, muSessionId ),
-          entry.options.gracePeriod );
+        sendBundledRequest(entry, originFilteredChangeSets, muCallIdTrail, muSessionId);
       } else {
         sendRequest( entry, originFilteredChangeSets, muCallIdTrail, muSessionId );
       }

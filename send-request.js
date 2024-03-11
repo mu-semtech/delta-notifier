@@ -44,14 +44,14 @@ export async function sendRequest(
   entry,
   changeSets,
   muCallIdTrail,
-  muSessionId
+  muSessionId,
+  extraHeaders = {}
 ) {
-  let requestObject; // will contain request information
-
   // construct the requestObject
   const method = entry.callback.method;
   const url = entry.callback.url;
   const headers = {
+    ...extraHeaders,
     "Content-Type": "application/json",
     "MU-AUTH-ALLOWED-GROUPS": changeSets[0].allowedGroups,
     "mu-call-id-trail": muCallIdTrail,
