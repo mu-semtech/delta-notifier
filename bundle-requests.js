@@ -8,7 +8,7 @@ const getBundleKey = (entry, muSessionId) => {
   return `${entry.index}-${muSessionId}`;
 };
 
-const sendBundledRequest = (bundleKey) => {
+const executeBundledRequest = (bundleKey) => {
   const bundle = bundles[bundleKey];
   delete bundles[bundleKey];
 
@@ -30,7 +30,7 @@ const sendBundledRequest = (bundleKey) => {
   );
 };
 
-export const prepareBundledRequest = (
+export const sendBundledRequest = (
   entry,
   originFilteredChangeSets,
   muCallIdTrail,
@@ -67,6 +67,9 @@ export const prepareBundledRequest = (
       muSessionId,
       bundledCallIdTrails: [],
     };
-    setTimeout(() => sendBundledRequest(bundleKey), entry.options.gracePeriod);
+    setTimeout(
+      () => executeBundledRequest(bundleKey),
+      entry.options.gracePeriod
+    );
   }
 };
