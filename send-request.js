@@ -1,6 +1,9 @@
 import http from "http";
 import { uuid } from "mu";
 
+const MAX_RETRIES = process.env.MAX_RETRIES || 3;
+const RETRY_TIMEOUT = process.env.RETRY_TIMEOUT || 250;
+
 function formatChangesetBody(changeSets, options) {
   if (options.resourceFormat == "v0.0.1") {
     return JSON.stringify(
@@ -45,7 +48,8 @@ export async function sendRequest(
   changeSets,
   muCallIdTrail,
   muSessionId,
-  extraHeaders = {}
+  extraHeaders = {},
+  retries = MAX_RETRIES
 ) {
   // construct the requestObject
   const method = entry.callback.method;
@@ -80,10 +84,26 @@ export async function sendRequest(
       console.log(
         `Call to ${method} ${url} likely failed. Received status ${response.status}.`
       );
+      throw new Error(`failed to send request, status: ${response.status}`);
     }
   } catch (error) {
     console.log(`Could not send request ${method} ${url}`);
     console.log(error);
-    console.log(`NOT RETRYING`); // TODO: retry a few times when delta's fail to send
+
+    if (retries > 0) {
+      const livesLeft = retries - 1;
+      console.log(`RETRYING (${livesLeft} left)`);
+      await new Promise((resolve) => setTimeout(resolve, RETRY_TIMEOUT));
+      await sendRequest(
+        entry,
+        changeSets,
+        muCallIdTrail,
+        muSessionId,
+        extraHeaders,
+        livesLeft
+      );
+    } else {
+      console.log(`NOT RETRYING`);
+    }
   }
 }
