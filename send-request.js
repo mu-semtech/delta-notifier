@@ -1,8 +1,7 @@
 import http from "http";
 import { uuid } from "mu";
 
-const MAX_RETRIES = process.env.MAX_RETRIES || 3;
-const RETRY_TIMEOUT = process.env.RETRY_TIMEOUT || 250;
+const DEFAULT_RETRY_TIMEOUT = 250;
 
 function formatChangesetBody(changeSets, options) {
   if (options.resourceFormat == "v0.0.1") {
@@ -49,8 +48,12 @@ export async function sendRequest(
   muCallIdTrail,
   muSessionId,
   extraHeaders = {},
-  retries = MAX_RETRIES
+  retriesLeft = undefined
 ) {
+  if (retriesLeft === undefined) {
+    retriesLeft = entry.options?.retry || 0;
+  }
+
   // construct the requestObject
   const method = entry.callback.method;
   const url = entry.callback.url;
@@ -88,22 +91,24 @@ export async function sendRequest(
     }
   } catch (error) {
     console.log(`Could not send request ${method} ${url}`);
-    console.log(error);
 
-    if (retries > 0) {
-      const livesLeft = retries - 1;
+    if (retriesLeft > 0) {
+      retriesLeft = retriesLeft - 1;
       console.log(`RETRYING (${livesLeft} left)`);
-      await new Promise((resolve) => setTimeout(resolve, RETRY_TIMEOUT));
+      await new Promise((resolve) =>
+        setTimeout(resolve, entry.retryTimeout || DEFAULT_RETRY_TIMEOUT)
+      );
       await sendRequest(
         entry,
         changeSets,
         muCallIdTrail,
         muSessionId,
         extraHeaders,
-        livesLeft
+        retriesLeft
       );
     } else {
       console.log(`NOT RETRYING`);
+      console.log(error);
     }
   }
 }
