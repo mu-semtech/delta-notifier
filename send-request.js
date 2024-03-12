@@ -94,7 +94,7 @@ export async function sendRequest(
 
     if (retriesLeft > 0) {
       retriesLeft = retriesLeft - 1;
-      console.log(`RETRYING (${livesLeft} left)`);
+      console.log(`RETRYING (${retriesLeft} left)`);
       await new Promise((resolve) =>
         setTimeout(resolve, entry.retryTimeout || DEFAULT_RETRY_TIMEOUT)
       );

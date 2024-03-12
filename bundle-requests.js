@@ -1,11 +1,21 @@
 import { sendRequest } from "./send-request.js";
+import { createHash } from "node:crypto";
 
 // map from bundle key to bundle object
 const bundles = {};
 
-const getBundleKey = (entry, muSessionId) => {
+const getBundleKey = (entry, muSessionId, changeSets) => {
+  if (entry.options.preciseBundling) {
+    // more precise regarding allowed groups BUT slower since we're hashing a possibly longish string
+    const hash = createHash("sha256");
+
+    const allowedGroups = changeSets[0].allowedGroups;
+    hash.update(allowedGroups);
+    return `${entry.index}-${muSessionId}-${hash.digest("hex")}`;
+  } else {
+    return `${entry.index}-${muSessionId}`;
+  }
   // should bundle with session id because SEAS sessions should be respected when handling deltas
-  return `${entry.index}-${muSessionId}`;
 };
 
 const executeBundledRequest = (bundleKey) => {
@@ -36,7 +46,7 @@ export const sendBundledRequest = (
   muCallIdTrail,
   muSessionId
 ) => {
-  const bundleKey = getBundleKey(entry, muSessionId);
+  const bundleKey = getBundleKey(entry, muSessionId, originFilteredChangeSets);
   const existingBundle = bundles[bundleKey];
 
   if (existingBundle) {
