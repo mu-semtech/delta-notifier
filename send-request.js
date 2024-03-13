@@ -137,6 +137,7 @@ export async function sendRequest(
       console.log(error);
     }
   } else {
-    console.log(`Changeset empty. Not sending to ${entry.callback.method} ${entry.callback.url}`);
+    if (process.env["DEBUG_DELTA_SEND"] || process.env["DEBUG_DELTA_NOT_SENDING_EMPTY"])
+      console.log(`Changeset empty. Not sending to ${entry.callback.method} ${entry.callback.url}`);
   }
 }
