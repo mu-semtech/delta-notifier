@@ -28,9 +28,6 @@ export default [
       retryTimeout: 250,
       // don't react to deltas from self
       ignoreFromSelf: true,
-      // Take the mu-auth-allowed-groups into account when bundling. 
-      // This is slower but more precise regarding access rights.
-      preciseBundling: true,
     }
   }
 ];
