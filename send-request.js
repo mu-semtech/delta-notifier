@@ -42,6 +42,46 @@ function formatChangesetBody(changeSets, options) {
   }
 }
 
+const handleResponse = async (
+  response,
+  entry,
+  changeSets,
+  muCallIdTrail,
+  muSessionId,
+  extraHeaders,
+  retriesLeft
+) => {
+  if (response.ok) {
+    // currently no need to act on a successful response
+    return;
+  }
+
+  const { method, url } = entry.callback;
+  console.log(
+    `Call to ${method} ${url} likely failed. Received status ${response.status}.`
+  );
+
+  if (retriesLeft === 0 || (response.status && response.status < 500)) {
+    console.log(`NOT RETRYING`);
+    return;
+  }
+
+  retriesLeft = retriesLeft - 1;
+  console.log(`RETRYING (${retriesLeft} left)`);
+  // in this case we want to retry, our error handling will deal with this.
+  await new Promise((resolve) =>
+    setTimeout(resolve, entry.retryTimeout || DEFAULT_RETRY_TIMEOUT)
+  );
+  await sendRequest(
+    entry,
+    changeSets,
+    muCallIdTrail,
+    muSessionId,
+    extraHeaders,
+    retriesLeft
+  );
+};
+
 export async function sendRequest(
   entry,
   changeSets,
@@ -84,33 +124,17 @@ export async function sendRequest(
         body,
         agent: keepAliveAgent,
       });
-      if (!response.ok) {
-        console.log(
-          `Call to ${method} ${url} likely failed. Received status ${response.status}.`
-        );
-        throw new Error(`failed to send request, status: ${response.status}`);
-      }
+      await handleResponse(
+        response,
+        entry,
+        changeSets,
+        muCallIdTrail,
+        muSessionId,
+        extraHeaders,
+        retriesLeft
+      );
     } catch (error) {
-      console.log(`Could not send request ${method} ${url}`);
-
-      if (retriesLeft > 0) {
-        retriesLeft = retriesLeft - 1;
-        console.log(`RETRYING (${retriesLeft} left)`);
-        await new Promise((resolve) =>
-          setTimeout(resolve, entry.retryTimeout || DEFAULT_RETRY_TIMEOUT)
-        );
-        await sendRequest(
-          entry,
-          changeSets,
-          muCallIdTrail,
-          muSessionId,
-          extraHeaders,
-          retriesLeft
-        );
-      } else {
-        console.log(`NOT RETRYING`);
-        console.log(error);
-      }
+      console.log(error);
     }
   } else {
     console.log(`Changeset empty. Not sending to ${entry.callback.method} ${entry.callback.url}`);

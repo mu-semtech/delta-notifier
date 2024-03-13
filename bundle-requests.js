@@ -1,22 +1,18 @@
 import { foldChangeSets } from './folding';
 import { sendRequest } from "./send-request.js";
-import { createHash } from "node:crypto";
 
 // map from bundle key to bundle object
 const bundles = {};
 
 const getBundleKey = (entry, muSessionId, changeSets) => {
-  if (entry.options.preciseBundling) {
-    // more precise regarding allowed groups BUT slower since we're hashing a possibly longish string
-    const hash = createHash("sha256");
-
-    const allowedGroups = changeSets[0].allowedGroups;
-    hash.update(allowedGroups);
-    return `${entry.index}-${muSessionId}-${hash.digest("hex")}`;
-  } else {
-    return `${entry.index}-${muSessionId}`;
-  }
-  // should bundle with session id because SEAS sessions should be respected when handling deltas
+  const allowedGroups = changeSets[0].allowedGroups;
+  // should bundle with session id and allowedGroups because SEAS sessions and
+  // access rights should be respected when handling deltas
+  // note: allowedGroups is a json formatted string and can be long or out of order
+  // this means that in theory some requests will not be bundled that could be bundled
+  // in practice this hasn't happened yet and would simply create two bundles instead of one
+  // the total changeset over all bundles (multiple or one) would still be the same
+  return `${entry.index}-${muSessionId}-${allowedGroups}`;
 };
 
 const executeBundledRequest = (bundleKey) => {

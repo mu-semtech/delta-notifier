@@ -29,10 +29,7 @@ export default [
       // fold sequences of deleted/inserted quads that don't have any effect
       foldEffectiveChanges: true,
       // don't react to deltas from self
-      ignoreFromSelf: true,
-      // Take the mu-auth-allowed-groups into account when bundling.
-      // This is slower but more precise regarding access rights.
-      preciseBundling: true,
+      ignoreFromSelf: true
     }
   }
 ];
