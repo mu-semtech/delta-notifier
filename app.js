@@ -2,6 +2,7 @@ import { app } from 'mu';
 import services from './config/rules';
 import bodyParser from 'body-parser';
 import dns from 'dns';
+import { foldChangeSets } from './folding';
 import { sendRequest } from './send-request';
 import { sendBundledRequest } from './bundle-requests';
 
@@ -30,6 +31,8 @@ app.post( '/', bodyParser.json({limit: '500mb'}), function( req, res ) {
   changeSets.forEach( (change) => {
     change.insert = change.insert || [];
     change.delete = change.delete || [];
+    change.effectiveInsert = change.effectiveInsert || [];
+    change.effectiveDelete = change.effectiveDelete || [];
   } );
 
   // inform watchers
@@ -77,7 +80,8 @@ async function informWatchers( changeSets, res, muCallIdTrail, muSessionId ){
       if( entry.options && entry.options.gracePeriod ) {
         sendBundledRequest(entry, originFilteredChangeSets, muCallIdTrail, muSessionId);
       } else {
-        sendRequest( entry, originFilteredChangeSets, muCallIdTrail, muSessionId );
+        const foldedChangeSets = foldChangeSets( entry, originFilteredChangeSets );
+        sendRequest( entry, foldedChangeSets, muCallIdTrail, muSessionId );
       }
     }
   } );

@@ -26,9 +26,11 @@ export default [
       retry: 3,
       // wait 250ms before retrying
       retryTimeout: 250,
+      // fold sequences of deleted/inserted quads that don't have any effect
+      foldEffectiveChanges: true,
       // don't react to deltas from self
       ignoreFromSelf: true,
-      // Take the mu-auth-allowed-groups into account when bundling. 
+      // Take the mu-auth-allowed-groups into account when bundling.
       // This is slower but more precise regarding access rights.
       preciseBundling: true,
     }
