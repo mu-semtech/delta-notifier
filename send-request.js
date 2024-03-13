@@ -56,6 +56,7 @@ const handleResponse = async (
     return;
   }
 
+  const { method, url } = entry.callback;
   console.log(
     `Call to ${method} ${url} likely failed. Received status ${response.status}.`
   );
