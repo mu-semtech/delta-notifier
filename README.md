@@ -69,7 +69,7 @@ The exported property contains an array of definitions, each linking a match to 
   - `options.resourceFormat`: Version format describing the format of the contents.  Keys may be added to this format, but they may not be removed.  Filter the properties as needed.
   - `options.gracePeriod`: Only send the response after a certain amount of time.  Groups deltas for this rule within this time frame and `mu-session-id` and `mu-auth-allowed-groups` and sends them in one go.
   - `options.ignoreFromSelf`: Don't inform about changes that originated from the microservice to be informed (based on the hostname).
-  - `options.retry`: (experimental) How many times the request is sent again on failure.  Defaults to 0.
+  - `options.retry`: (experimental) How many times the request is sent again on failure.  Defaults to 0. Warning: in case of retries, deltas may be received out of order!
   - `options.retryTimeout`: (experimental) How much time is left in between retries (in ms).  Currently defaults to 250ms.
 
 ## Delta formats
