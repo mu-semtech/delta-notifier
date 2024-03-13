@@ -1,3 +1,4 @@
+import { foldChangeSets } from './folding';
 import { sendRequest } from "./send-request.js";
 
 // map from bundle key to bundle object
@@ -25,9 +26,11 @@ const executeBundledRequest = (bundleKey) => {
     return;
   }
 
+  const foldedChangeSets = foldChangeSets(bundle.entry, bundle.changeSets);
+
   sendRequest(
     bundle.entry,
-    bundle.originFilteredChangeSets,
+    foldedChangeSets,
     bundle.muCallIdTrail,
     bundle.muSessionId,
     {
@@ -38,26 +41,26 @@ const executeBundledRequest = (bundleKey) => {
 
 export const sendBundledRequest = (
   entry,
-  originFilteredChangeSets,
+  changeSets,
   muCallIdTrail,
   muSessionId
 ) => {
-  const bundleKey = getBundleKey(entry, muSessionId, originFilteredChangeSets);
+  const bundleKey = getBundleKey(entry, muSessionId, changeSets);
   const existingBundle = bundles[bundleKey];
 
   if (existingBundle) {
     // change sets in bundle are simply added to the existing bundle, have client remove noops from it if desired
     // as we don't know if noops are of interest to the client and we shouldn't judge
-    existingBundle.originFilteredChangeSets = [
-      ...bundles[bundleKey].originFilteredChangeSets,
-      ...originFilteredChangeSets,
+    existingBundle.changeSets = [
+      ...bundles[bundleKey].changeSets,
+      ...changeSets,
     ];
     existingBundle.bundledCallIdTrails.push(muCallIdTrail);
     // since an existing bundle exists, we don't need to send it after timeout,
     // the existing bundle will send us too
     if (process.env["DEBUG_DELTA_SEND"]) {
       console.log(
-        `Adding to bundle for key ${bundleKey}, now contains ${existingBundle.originFilteredChangeSets.length} change sets`
+        `Adding to bundle for key ${bundleKey}, now contains ${existingBundle.changeSets.length} change sets`
       );
     }
   } else {
@@ -68,7 +71,7 @@ export const sendBundledRequest = (
     }
     bundles[bundleKey] = {
       entry,
-      originFilteredChangeSets,
+      changeSets,
       muCallIdTrail,
       muSessionId,
       bundledCallIdTrails: [],

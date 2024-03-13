@@ -68,6 +68,7 @@ The exported property contains an array of definitions, each linking a match to 
   - `options`: Options describing the match
   - `options.resourceFormat`: Version format describing the format of the contents.  Keys may be added to this format, but they may not be removed.  Filter the properties as needed.
   - `options.gracePeriod`: Only send the response after a certain amount of time.  Groups deltas for this rule within this time frame and `mu-session-id` and `mu-auth-allowed-groups` and sends them in one go.
+  - `options.foldEffectiveChanges`: (experimental) Fold identique inserted/deleted quads that don't have any effect. Requires effective changes from database. Defaults to `false`.
   - `options.ignoreFromSelf`: Don't inform about changes that originated from the microservice to be informed (based on the hostname).
   - `options.retry`: (experimental) How many times the request is sent again on failure.  Defaults to 0. Warning: in case of retries, deltas may be received out of order!
   - `options.retryTimeout`: (experimental) How much time is left in between retries (in ms).  Currently defaults to 250ms.
@@ -115,9 +116,11 @@ Any falsy value will currently not send the changed triples to the consuming ser
 Debugging can be enabled in the service by setting environment variables.  The following may be handy:
 
   - `DEBUG_DELTA_SEND`: Logs all delta messages that are being sent to clients
+    - `DEBUG_DELTA_NOT_SENDING_EMPTY`: Logs a message when an empty delta message is discovered and will not be sent
   - `DEBUG_DELTA_MATCH`: Logs a check for each target block, indicating a check will occur
   - `DEBUG_TRIPLE_MATCHES_SPEC`: Extensive logging for triples matching a given specification.  Handy when requests are unexpectedly not sent.
-  
+  - `DEBUG_DELTA_FOLD`: Logs the incoming and outgoing delta messages of the folding process
+
 ## Extending
 
 You are encouraged to help figure out how to best extend this service.  Fork this repository.  Run an experiment.  Open an issue or PR describing your experiment.  Feel free to open up an issue if you would like to discuss a possible extension.

@@ -90,49 +90,54 @@ export async function sendRequest(
   extraHeaders = {},
   retriesLeft = undefined
 ) {
-  if (retriesLeft === undefined) {
-    retriesLeft = entry.options?.retry || 0;
-  }
+  if (changeSets.length) {
+    if (retriesLeft === undefined) {
+      retriesLeft = entry.options?.retry || 0;
+    }
 
-  // construct the requestObject
-  const method = entry.callback.method;
-  const url = entry.callback.url;
-  const headers = {
-    ...extraHeaders,
-    "Content-Type": "application/json",
-    "MU-AUTH-ALLOWED-GROUPS": changeSets[0].allowedGroups,
-    "mu-call-id-trail": muCallIdTrail,
-    "mu-call-id": uuid(),
-    "mu-session-id": muSessionId,
-  };
+    // construct the requestObject
+    const method = entry.callback.method;
+    const url = entry.callback.url;
+    const headers = {
+      ...extraHeaders,
+      "Content-Type": "application/json",
+      "MU-AUTH-ALLOWED-GROUPS": changeSets[0].allowedGroups,
+      "mu-call-id-trail": muCallIdTrail,
+      "mu-call-id": uuid(),
+      "mu-session-id": muSessionId,
+    };
 
-  let body;
-  if (entry.options && entry.options.resourceFormat) {
-    // we should send contents
-    body = formatChangesetBody(changeSets, entry.options);
-  }
-  if (process.env["DEBUG_DELTA_SEND"])
-    console.log(`Executing send ${method} to ${url}`);
-  try {
-    const keepAliveAgent = new http.Agent({
-      keepAlive: true,
-    });
-    const response = await fetch(url, {
-      method,
-      headers,
-      body,
-      agent: keepAliveAgent,
-    });
-    await handleResponse(
-      response,
-      entry,
-      changeSets,
-      muCallIdTrail,
-      muSessionId,
-      extraHeaders,
-      retriesLeft
-    );
-  } catch (error) {
-    console.log(error);
+    let body;
+    if (entry.options && entry.options.resourceFormat) {
+      // we should send contents
+      body = formatChangesetBody(changeSets, entry.options);
+    }
+    if (process.env["DEBUG_DELTA_SEND"])
+      console.log(`Executing send ${method} to ${url}`);
+    try {
+      const keepAliveAgent = new http.Agent({
+        keepAlive: true,
+      });
+      const response = await fetch(url, {
+        method,
+        headers,
+        body,
+        agent: keepAliveAgent,
+      });
+      await handleResponse(
+        response,
+        entry,
+        changeSets,
+        muCallIdTrail,
+        muSessionId,
+        extraHeaders,
+        retriesLeft
+      );
+    } catch (error) {
+      console.log(error);
+    }
+  } else {
+    if (process.env["DEBUG_DELTA_SEND"] || process.env["DEBUG_DELTA_NOT_SENDING_EMPTY"])
+      console.log(`Changeset empty. Not sending to ${entry.callback.method} ${entry.callback.url}`);
   }
 }
