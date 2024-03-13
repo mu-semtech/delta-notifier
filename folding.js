@@ -44,6 +44,9 @@ export function foldChangeSets(entry, changeSets) {
     if (foldedInsertQuads.length)
       foldedChangeSets.push({ delete: [], insert: foldedInsertQuads });
 
+    if (process.env["DEBUG_DELTA_FOLD"])
+      console.log(`Folded changeset from:\n ${JSON.stringify(changeSets)}\nto:\n ${JSON.stringify(foldedChangeSets)}`);
+
     return foldedChangeSets;
   } else {
     return changeSets;

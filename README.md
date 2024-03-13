@@ -118,7 +118,8 @@ Debugging can be enabled in the service by setting environment variables.  The f
   - `DEBUG_DELTA_SEND`: Logs all delta messages that are being sent to clients
   - `DEBUG_DELTA_MATCH`: Logs a check for each target block, indicating a check will occur
   - `DEBUG_TRIPLE_MATCHES_SPEC`: Extensive logging for triples matching a given specification.  Handy when requests are unexpectedly not sent.
-  
+  - `DEBUG_DELTA_FOLD`: Logs the incoming and outgoing delta messages of the folding process
+
 ## Extending
 
 You are encouraged to help figure out how to best extend this service.  Fork this repository.  Run an experiment.  Open an issue or PR describing your experiment.  Feel free to open up an issue if you would like to discuss a possible extension.
