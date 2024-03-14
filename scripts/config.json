@@ -1,0 +1,21 @@
+{
+  "version": "0.1",
+  "scripts": [
+    {
+      "documentation": {
+        "command": "search-diff",
+        "description": "Search the data diff in the delta messages. Parameters:\n  diff: default /project/data/diff_file\n  delta: default /project/data/delta_file.json\n  write_output: default yes\n  insert_out_file: default /project/data/missing_inserts.nq\n  delete_out_file: default /project/data/missing_deletes.nq",
+        "arguments": ["diff", "delta", "write", "insert_out_file", "delete_out_file"]
+      },
+      "environment": {
+        "image": "python:3.10",
+        "interactive": false,
+        "script": "delta-notifier/search-diff.sh",
+        "join_networks": true
+      },
+      "mounts": {
+          "app": "/project/"
+        }
+    }
+  ]
+}
