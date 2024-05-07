@@ -73,6 +73,12 @@ The exported property contains an array of definitions, each linking a match to 
   - `options.retry`: (experimental) How many times the request is sent again on failure.  Defaults to 0. Warning: in case of retries, deltas may be received out of order!
   - `options.retryTimeout`: (experimental) How much time is left in between retries (in ms).  Currently defaults to 250ms.
 
+### Ignoring errors:
+
+Some errors can be ignored, the configuration for it is the following:
+
+- `IGNORE_UNREACHABLE_SERVICES`: a comma-separated list of service names for which the unreachable error should be ignored
+
 ## Delta formats
 
 The delta may be offered in multiple formats.  Versions should match the exact string.  Specify `options.resourceFormat` to indicate the specific resourceformat.
