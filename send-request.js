@@ -101,11 +101,14 @@ export async function sendRequest(
     const headers = {
       ...extraHeaders,
       "Content-Type": "application/json",
-      "MU-AUTH-ALLOWED-GROUPS": changeSets[0].allowedGroups,
       "mu-call-id-trail": muCallIdTrail,
       "mu-call-id": uuid(),
       "mu-session-id": muSessionId,
     };
+
+    if (changeSets[0].allowedGroups) {
+      headers["MU-AUTH-ALLOWED-GROUPS"] = changeSets[0].allowedGroups;
+    }
 
     let body;
     if (entry.options && entry.options.resourceFormat) {
