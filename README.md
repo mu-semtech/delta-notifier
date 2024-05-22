@@ -73,6 +73,13 @@ The exported property contains an array of definitions, each linking a match to 
   - `options.retry`: (experimental) How many times the request is sent again on failure.  Defaults to 0. Warning: in case of retries, deltas may be received out of order!
   - `options.retryTimeout`: (experimental) How much time is left in between retries (in ms).  Currently defaults to 250ms.
 
+### Modifying quads
+#### Normalize datetime
+To enable normalization of datetime values, set the `NORMALIZE_DATETIME_IN_QUAD` to `"true"`. This may reduce false effective changes being sent. E.g. timezone differences or "2024-02-22T15:04:37.000Z" being the same as "2024-02-22T15:04:37Z".
+
+#### Custom quad normalization
+Mount a custom function in `/config/normalize-quad.js` to implement your own quad normalization. See corresponding `./config/normalize-quad.js` as example.
+
 ## Delta formats
 
 The delta may be offered in multiple formats.  Versions should match the exact string.  Specify `options.resourceFormat` to indicate the specific resourceformat.

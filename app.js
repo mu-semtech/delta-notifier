@@ -1,5 +1,6 @@
 import { app } from 'mu';
 import services from './config/rules';
+import normalizeQuad from './config/normalize-quad';
 import bodyParser from 'body-parser';
 import dns from 'dns';
 import { foldChangeSets } from './folding';
@@ -29,14 +30,14 @@ app.post( '/', bodyParser.json({limit: '500mb'}), function( req, res ) {
   const muSessionId = req.get('mu-session-id');
 
   changeSets.forEach( (change) => {
-    change.insert = change.insert || [];
-    change.delete = change.delete || [];
-    change.effectiveInsert = change.effectiveInsert || [];
-    change.effectiveDelete = change.effectiveDelete || [];
+    ['insert', 'delete', 'effectiveInsert', 'effectiveDelete']
+      .map( (key) => {
+        change[key] = (change[key] || []).map(normalizeQuad);
+      } );
   } );
 
   // inform watchers
-    informWatchers( changeSets, res, muCallIdTrail, muSessionId );
+  informWatchers( changeSets, res, muCallIdTrail, muSessionId );
 
   // push relevant data to interested actors
   res.status(204).send();
