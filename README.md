@@ -67,7 +67,7 @@ The exported property contains an array of definitions, each linking a match to 
   - `callback.method`: Method to use when informing about a match
   - `options`: Options describing the match
   - `options.resourceFormat`: Version format describing the format of the contents.  Keys may be added to this format, but they may not be removed.  Filter the properties as needed.
-  - `options.gracePeriod`: Only send the response after a certain amount milliseconds.  Groups deltas for this rule within this time frame and `mu-session-id` and `mu-auth-allowed-groups` and sends them in one go.
+  - `options.gracePeriod`: Only send the response after a certain amount of time (milliseconds).  Groups deltas for this rule within this time frame and `mu-session-id` and `mu-auth-allowed-groups` and sends them in one go.
   - `options.foldEffectiveChanges`: (experimental) Fold identique inserted/deleted quads that don't have any effect. Requires effective changes from database. Defaults to `false`.
   - `options.ignoreFromSelf`: Don't inform about changes that originated from the microservice to be informed (based on the hostname).
   - `options.retry`: (experimental) How many times the request is sent again on failure.  Defaults to 0. Warning: in case of retries, deltas may be received out of order!
