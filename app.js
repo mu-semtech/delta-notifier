@@ -11,9 +11,16 @@ import {
   filterMatchesForOrigin,
   hostnameForEntry
 } from './matching';
+import {
+  DEBUG_DELTA_MATCH,
+  DEBUG_DELTA_SEND,
+  DEBUG_TRIPLE_MATCHES_SPEC,
+  LOG_REQUESTS,
+  LOG_SERVER_CONFIGURATION,
+} from './env';
 
 // Log server config if requested
-if( process.env["LOG_SERVER_CONFIGURATION"] )
+if(LOG_SERVER_CONFIGURATION)
   console.log(JSON.stringify( services ));
 
 let index = 0;
@@ -35,7 +42,7 @@ app.get( '/', function( req, res ) {
 } );
 
 app.post( '/', bodyParser.json({limit: '500mb'}), function( req, res ) {
-  if( process.env["LOG_REQUESTS"] ) {
+  if( LOG_REQUESTS ) {
     console.log("Logging request body");
     console.log(req.body);
   }
@@ -84,25 +91,25 @@ async function informWatchers( changeSets, res, muCallIdTrail, muSessionId ){
           .some( (triple) => tripleMatchesSpec( triple, firstEntry.match ) );
     const matchingServices = groupedServices[matchKey];
     matchingServices.forEach( async (entry) => {
-      if( process.env["DEBUG_TRIPLE_MATCHES_SPEC"] )
+      if( DEBUG_TRIPLE_MATCHES_SPEC )
         console.log(`Triple matches spec? ${someTripleMatchedSpec}`);
 
       if( someTripleMatchedSpec ) {
         // for each entity
-        if( process.env["DEBUG_DELTA_MATCH"] )
+        if( DEBUG_DELTA_MATCH )
           console.log(`Checking if we want to send to ${entry.callback.url}`);
         const matchSpec = entry.match;
         const originFilteredChangeSets = await filterMatchesForOrigin( maybePatternFilteredChangesets, entry );
 
-        if (originFilteredChangeSets.length > 0) {
-          if( process.env["DEBUG_TRIPLE_MATCHES_SPEC"] && entry.options.ignoreFromSelf )
+        if ( originFilteredChangeSets.length > 0 ) {
+          if( DEBUG_TRIPLE_MATCHES_SPEC && entry.options.ignoreFromSelf )
             console.log(`There are ${originFilteredChangeSets.length} changes sets not from ${hostnameForEntry( entry )}`);
 
           // inform matching entities
-          if( process.env["DEBUG_DELTA_SEND"] )
+          if( DEBUG_DELTA_SEND )
             console.log(`Going to send ${entry.callback.method} to ${entry.callback.url}`);
 
-          if( entry.options && entry.options.gracePeriod ) {
+          if( entry.options?.gracePeriod ) {
             sendBundledRequest(entry, originFilteredChangeSets, muCallIdTrail, muSessionId);
           } else {
             const foldedChangeSets = foldChangeSets( entry, originFilteredChangeSets );
