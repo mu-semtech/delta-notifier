@@ -92,18 +92,21 @@ async function informWatchers( changeSets, res, muCallIdTrail, muSessionId ){
           console.log(`Checking if we want to send to ${entry.callback.url}`);
         const matchSpec = entry.match;
         const originFilteredChangeSets = await filterMatchesForOrigin( maybePatternFilteredChangesets, entry );
-        if( process.env["DEBUG_TRIPLE_MATCHES_SPEC"] && entry.options.ignoreFromSelf )
-          console.log(`There are ${originFilteredChangeSets.length} changes sets not from ${hostnameForEntry( entry )}`);
 
-        // inform matching entities
-        if( process.env["DEBUG_DELTA_SEND"] )
-          console.log(`Going to send ${entry.callback.method} to ${entry.callback.url}`);
+        if (originFilteredChangeSets.length > 0) {
+          if( process.env["DEBUG_TRIPLE_MATCHES_SPEC"] && entry.options.ignoreFromSelf )
+            console.log(`There are ${originFilteredChangeSets.length} changes sets not from ${hostnameForEntry( entry )}`);
 
-        if( entry.options && entry.options.gracePeriod ) {
-          sendBundledRequest(entry, originFilteredChangeSets, muCallIdTrail, muSessionId);
-        } else {
-          const foldedChangeSets = foldChangeSets( entry, originFilteredChangeSets );
-          sendRequest( entry, foldedChangeSets, muCallIdTrail, muSessionId );
+          // inform matching entities
+          if( process.env["DEBUG_DELTA_SEND"] )
+            console.log(`Going to send ${entry.callback.method} to ${entry.callback.url}`);
+
+          if( entry.options && entry.options.gracePeriod ) {
+            sendBundledRequest(entry, originFilteredChangeSets, muCallIdTrail, muSessionId);
+          } else {
+            const foldedChangeSets = foldChangeSets( entry, originFilteredChangeSets );
+            sendRequest( entry, foldedChangeSets, muCallIdTrail, muSessionId );
+          }
         }
       }
     } );
