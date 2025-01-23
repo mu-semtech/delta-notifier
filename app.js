@@ -43,6 +43,32 @@ app.post( '/', bodyParser.json({limit: '500mb'}), function( req, res ) {
   res.status(204).send();
 } );
 
+
+/**
+ * Filters the change sets based on a specified pattern.
+ *
+ * @param {Array<Object>} changeSets - An array of change set objects,
+ * each containing `insert` and `delete` properties.
+ * @param {Object} entry - An object containing the matching criteria.
+ * @param {Array} entry.match - The pattern used to filter the triples
+ * in the `insert` and `delete` arrays.
+ * @returns {Array<Object>} A new array of change set objects with
+ * filtered `insert` and `delete` properties.
+ */
+function filterChangesestOnPattern(changeSets, entry) {
+  const filteredChangesets = [];
+  for (const changeSet of changeSets) {
+    const { insert, delete: deleteSet } = changeSet;
+    const clonedChangeSet = {
+      ...changeSet,
+      insert: insert.filter((triple) => tripleMatchesSpec(triple, entry.match)),
+      delete: deleteSet.filter((triple) => tripleMatchesSpec(triple, entry.match))
+    };
+    filteredChangesets.push(clonedChangeSet);
+  };
+  return filteredChangesets;
+}
+
 async function informWatchers( changeSets, res, muCallIdTrail, muSessionId ){
   services.map( async (entry, index) => {
     entry.index = index;
@@ -52,7 +78,11 @@ async function informWatchers( changeSets, res, muCallIdTrail, muSessionId ){
 
     const matchSpec = entry.match;
 
-    const originFilteredChangeSets = await filterMatchesForOrigin( changeSets, entry );
+    let maybePatternFilteredChangesets = changeSets;
+    if (entry.options?.sendMatchesOnly) {
+      maybePatternFilteredChangesets = filterChangesestOnPattern(changeSets, entry);
+    }
+    const originFilteredChangeSets = await filterMatchesForOrigin( maybePatternFilteredChangesets, entry );
     if( process.env["DEBUG_TRIPLE_MATCHES_SPEC"] && entry.options.ignoreFromSelf )
       console.log(`There are ${originFilteredChangeSets.length} changes sets not from ${hostnameForEntry( entry )}`);
 
