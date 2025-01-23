@@ -14,11 +14,13 @@ import { DEBUG_TRIPLE_MATCHES_SPEC } from './env';
 export function filterChangesetsOnPattern(changeSets, entry) {
   const filteredChangesets = [];
   for (const changeSet of changeSets) {
-    const { insert, delete: deleteSet } = changeSet;
+    const { insert, delete: deleteSet, effectiveInsert, effectiveDelete } = changeSet;
     const clonedChangeSet = {
       ...changeSet,
       insert: insert.filter((triple) => tripleMatchesSpec(triple, entry.match)),
-      delete: deleteSet.filter((triple) => tripleMatchesSpec(triple, entry.match))
+      delete: deleteSet.filter((triple) => tripleMatchesSpec(triple, entry.match)),
+      effectiveInsert: effectiveInsert.filter((triple) => tripleMatchesSpec(triple, entry.match)),
+      effectiveDelete: effectiveDelete.filter((triple) => tripleMatchesSpec(triple, entry.match)),
     };
     filteredChangesets.push(clonedChangeSet);
   };
