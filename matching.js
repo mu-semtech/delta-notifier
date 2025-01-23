@@ -1,5 +1,5 @@
 import dns from 'dns';
-
+import { DEBUG_TRIPLE_MATCHES_SPEC } from './env';
 /**
  * Filters the change sets based on a specified pattern.
  *
@@ -27,7 +27,7 @@ export function filterChangesetsOnPattern(changeSets, entry) {
 
 export function tripleMatchesSpec( triple, matchSpec ) {
   // form of triple is {s, p, o}, same as matchSpec
-  if( process.env["DEBUG_TRIPLE_MATCHES_SPEC"] )
+  if(DEBUG_TRIPLE_MATCHES_SPEC)
     console.log(`Does ${JSON.stringify(triple)} match ${JSON.stringify(matchSpec)}?`);
 
   for( let key in matchSpec ){
