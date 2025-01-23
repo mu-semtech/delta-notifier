@@ -16,12 +16,14 @@ import {
 if( process.env["LOG_SERVER_CONFIGURATION"] )
   console.log(JSON.stringify( services ));
 
+let index = 0;
 const groupedServices = services.reduce((acc, service) => {
   // Create a unique key for the match pattern
   const matchKey = `${normalizeObject(service.match)}${service.options.sendMatchesOnly || false}`;
   if (!acc[matchKey]) {
     acc[matchKey] = [];
   }
+  service.index = index++;
   acc[matchKey].push(service);
   return acc;
 }, {});
@@ -81,12 +83,11 @@ async function informWatchers( changeSets, res, muCallIdTrail, muSessionId ){
           changedTriples
           .some( (triple) => tripleMatchesSpec( triple, firstEntry.match ) );
     const matchingServices = groupedServices[matchKey];
-    matchingServices.map( async (entry, index) => {
+    matchingServices.forEach( async (entry) => {
       if( process.env["DEBUG_TRIPLE_MATCHES_SPEC"] )
         console.log(`Triple matches spec? ${someTripleMatchedSpec}`);
 
       if( someTripleMatchedSpec ) {
-        entry.index = index;
         // for each entity
         if( process.env["DEBUG_DELTA_MATCH"] )
           console.log(`Checking if we want to send to ${entry.callback.url}`);
