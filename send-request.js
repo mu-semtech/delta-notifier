@@ -139,7 +139,7 @@ export async function sendRequest(
         retriesLeft
       );
     } catch (error) {
-      console.log(error);
+      console.error(`Error sending delta to ${url}`, error);
     }
   } else {
     if (DEBUG_DELTA_SEND || DEBUG_DELTA_NOT_SENDING_EMPTY)
