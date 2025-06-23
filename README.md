@@ -58,7 +58,7 @@ export default [
 
 The exported property contains an array of definitions, each linking a match to a callback.
 
-  - `match`: Pattern to match against.  Any supplied key must match, anything unspecified is ignored.
+  - `match`: Pattern to match against.  Any supplied key must match, anything unspecified is ignored. Can pass multiple patterns as a list, which will be combined as an "or" (one valid pattern results in a match).
   - `match.subject`: Matches the subject.  Both `type` and `value` may be specified.
   - `match.predicate`: Matches the predicade.  Both `type` and `value` may be specified.
   - `match.object`: Matches the object.  Both `type` and `value` may be specified.
@@ -72,7 +72,7 @@ The exported property contains an array of definitions, each linking a match to 
   - `options.ignoreFromSelf`: Don't inform about changes that originated from the microservice to be informed (based on the hostname).
   - `options.retry`: (experimental) How many times the request is sent again on failure.  Defaults to 0. Warning: in case of retries, deltas may be received out of order!
   - `options.retryTimeout`: (experimental) How much time is left in between retries (in ms).  Currently defaults to 250ms.
-  - `options.sendMatchesOnly`: Only send triples that match, removing the other triples from the changes.
+  - `options.sendMatchesOnly`: Only send triples that match the pattern(s), removing the other triples from the changes.
 
 ### Modifying quads
 #### Normalize datetime

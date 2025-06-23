@@ -6,7 +6,7 @@ import { DEBUG_TRIPLE_MATCHES_SPEC } from './env';
  * @param {Array<Object>} changeSets - An array of change set objects,
  * each containing `insert` and `delete` properties.
  * @param {Object} entry - An object containing the matching criteria.
- * @param {Array} entry.match - The pattern used to filter the triples
+ * @param {Array} entry.match - The pattern(s) used to filter the triples
  * in the `insert` and `delete` arrays.
  * @returns {Array<Object>} A new array of change set objects with
  * filtered `insert` and `delete` properties.
@@ -27,14 +27,20 @@ export function filterChangesetsOnPattern(changeSets, entry) {
   return filteredChangesets;
 }
 
+
 export function tripleMatchesSpec( triple, matchSpec ) {
-  // form of triple is {s, p, o}, same as matchSpec
+  const matches = Array.isArray(matchSpec) ? matchSpec : [matchSpec];
   if(DEBUG_TRIPLE_MATCHES_SPEC)
     console.log(`Does ${JSON.stringify(triple)} match ${JSON.stringify(matchSpec)}?`);
 
-  for( let key in matchSpec ){
-    // key is one of s, p, o
-    const subMatchSpec = matchSpec[key];
+  return matches.some((match) => tripleMatchesPattern(triple, match));
+}
+
+function tripleMatchesPattern( triple, pattern ) {
+  // form of triple is {s, p, o} or {subject, predicate, object}, same as pattern
+  for( let key in pattern ){
+    // key is one of subject, predicate, object
+    const subMatchSpec = pattern[key];
     const subMatchValue = triple[key];
 
     if( subMatchSpec && !subMatchValue )
@@ -45,7 +51,7 @@ export function tripleMatchesSpec( triple, matchSpec ) {
       if( subMatchSpec[subKey] !== subMatchValue[subKey] )
         return false;
   }
-  return true; // no false matches found, let's send a response
+  return true; // no false matches found
 }
 
 
