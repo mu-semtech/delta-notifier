@@ -80,6 +80,12 @@ To enable normalization of datetime values, set the `NORMALIZE_DATETIME_IN_QUAD`
 #### Custom quad normalization
 Mount a custom function in `/config/normalize-quad.js` to implement your own quad normalization. See corresponding `./config/normalize-quad.js` as example.
 
+### Ignoring errors:
+
+Some errors can be ignored, the configuration for it is the following:
+
+- `IGNORE_UNREACHABLE_SERVICES`: a comma-separated list of service names for which the unreachable error should be ignored
+
 ## Delta formats
 
 The delta may be offered in multiple formats.  Versions should match the exact string.  Specify `options.resourceFormat` to indicate the specific resourceformat.
