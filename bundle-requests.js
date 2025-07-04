@@ -1,5 +1,6 @@
 import { foldChangeSets } from './folding';
 import { sendRequest } from "./send-request.js";
+import { DEBUG_DELTA_SEND } from './env';
 
 // map from bundle key to bundle object
 const bundles = {};
@@ -58,13 +59,13 @@ export const sendBundledRequest = (
     existingBundle.bundledCallIdTrails.push(muCallIdTrail);
     // since an existing bundle exists, we don't need to send it after timeout,
     // the existing bundle will send us too
-    if (process.env["DEBUG_DELTA_SEND"]) {
+    if (DEBUG_DELTA_SEND) {
       console.log(
         `Adding to bundle for key ${bundleKey}, now contains ${existingBundle.changeSets.length} change sets`
       );
     }
   } else {
-    if (process.env["DEBUG_DELTA_SEND"]) {
+    if (DEBUG_DELTA_SEND) {
       console.log(
         `Creating bundle for key ${bundleKey}, sending in ${entry.options.gracePeriod}ms`
       );
