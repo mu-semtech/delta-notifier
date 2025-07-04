@@ -1,4 +1,4 @@
-import { app } from 'mu';
+import { app, errorHandler } from 'mu';
 import services from './config/rules';
 import normalizeQuad from './config/normalize-quad';
 import bodyParser from 'body-parser';
@@ -87,6 +87,18 @@ async function informWatchers( changeSets, res, muCallIdTrail, muSessionId ){
     }
   } );
 }
+
+app.use((err, req, res, next) => {
+  if (err.type === 'entity.too.large') {
+    console.warn(`Payload too large for ${req.method} ${req.originalUrl}`);
+    return res.status(413).send('Payload too large');
+  }
+
+  // Pass other errors to the default handler
+  next(err);
+});
+
+app.use(errorHandler);
 
 function tripleMatchesSpec( triple, matchSpec ) {
   // form of triple is {s, p, o}, same as matchSpec
