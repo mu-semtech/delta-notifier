@@ -2,6 +2,8 @@ import http from "http";
 import { uuid } from "mu";
 
 const DEFAULT_RETRY_TIMEOUT = 250;
+const DEBUG_DELTA_SEND = process.env["DEBUG_DELTA_SEND"];
+const DEBUG_DELTA_NOT_SENDING_EMPTY = process.env["DEBUG_DELTA_NOT_SENDING_EMPTY"];
 
 function formatChangesetBody(changeSets, options) {
   if (options.resourceFormat == "v0.0.1") {
@@ -115,7 +117,7 @@ export async function sendRequest(
       // we should send contents
       body = formatChangesetBody(changeSets, entry.options);
     }
-    if (process.env["DEBUG_DELTA_SEND"])
+    if (DEBUG_DELTA_SEND)
       console.log(`Executing send ${method} to ${url}`);
     try {
       const keepAliveAgent = new http.Agent({
@@ -137,10 +139,10 @@ export async function sendRequest(
         retriesLeft
       );
     } catch (error) {
-      console.log(error);
+      console.error(`Error sending delta to ${url}`, error);
     }
   } else {
-    if (process.env["DEBUG_DELTA_SEND"] || process.env["DEBUG_DELTA_NOT_SENDING_EMPTY"])
+    if (DEBUG_DELTA_SEND || DEBUG_DELTA_NOT_SENDING_EMPTY)
       console.log(`Changeset empty. Not sending to ${entry.callback.method} ${entry.callback.url}`);
   }
 }
