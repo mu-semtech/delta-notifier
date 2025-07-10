@@ -91,7 +91,9 @@ async function informWatchers( changeSets, res, muCallIdTrail, muSessionId ){
 app.use((err, req, res, next) => {
   if (err.type === 'entity.too.large') {
     console.warn(`Payload too large for ${req.method} ${req.originalUrl}`);
-    return res.status(413).send('Payload too large');
+    return res.status(413).json({
+      errors: [ {title: 'Payload too large'} ]
+    });
   }
 
   // Pass other errors to the default handler
