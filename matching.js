@@ -22,8 +22,14 @@ export function filterChangesetsOnPattern(changeSets, entry) {
       effectiveInsert: effectiveInsert.filter((triple) => tripleMatchesSpec(triple, entry.match)),
       effectiveDelete: effectiveDelete.filter((triple) => tripleMatchesSpec(triple, entry.match)),
     };
-    filteredChangesets.push(clonedChangeSet);
-  };
+    // do not keep empty change sets
+    if( clonedChangeSet.insert.length > 0 
+      || clonedChangeSet.delete.length > 0 
+      || clonedChangeSet.effectiveInsert.length > 0 
+      || clonedChangeSet.effectiveDelete.length > 0 ) {
+      filteredChangesets.push(clonedChangeSet);
+    }
+  }
   return filteredChangesets;
 }
 
