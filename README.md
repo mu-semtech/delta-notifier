@@ -41,7 +41,7 @@ We first present an example, next we explain each of the properties.  The follow
 export default [
   {
     match: {
-      // form of element is {subject,predicate,object}
+      // form of element is {subject,predicate,object,graph}
       // predicate: { type: "uri", value: "http://www.semanticdesktop.org/ontologies/2007/03/22/nmo#isPartOf" }
     },
     callback: {
@@ -51,6 +51,19 @@ export default [
       resourceFormat: "v0.0.0-genesis",
       gracePeriod: 1000,
       ignoreFromSelf: true
+    }
+  },
+  {
+    match: {
+      // Example using regex matching for URIs
+      predicate: { 
+        type: "uri", 
+        value: /^http:\/\/example\.com\/ontology\/.+$/ 
+      }
+    },
+    callback: {
+      url: "http://ontology-service/.mu/delta", 
+      method: "POST"
     }
   }
 ]
@@ -62,6 +75,7 @@ The exported property contains an array of definitions, each linking a match to 
   - `match.subject`: Matches the subject.  Both `type` and `value` may be specified.
   - `match.predicate`: Matches the predicade.  Both `type` and `value` may be specified.
   - `match.object`: Matches the object.  Both `type` and `value` may be specified.
+  - `match.graph`: Matches the graph.  Both `type` and `value` may be specified.
   - `callback`: The place to inform about a matched delta
   - `callback.url`: URL to inform about a match
   - `callback.method`: Method to use when informing about a match

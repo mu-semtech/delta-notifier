@@ -34,7 +34,7 @@ export function filterChangesetsOnPattern(changeSets, entry) {
 }
 
 export function tripleMatchesSpec( triple, matchSpec ) {
-  // form of triple is {s, p, o}, same as matchSpec
+  // form of triple is {s, p, o, g}, same as matchSpec (g for graph is optional)
   if(DEBUG_TRIPLE_MATCHES_SPEC)
     console.log(`Does ${JSON.stringify(triple)} match ${JSON.stringify(matchSpec)}?`);
 
@@ -46,10 +46,21 @@ export function tripleMatchesSpec( triple, matchSpec ) {
     if( subMatchSpec && !subMatchValue )
       return false;
 
-    for( let subKey in subMatchSpec )
+    for( let subKey in subMatchSpec ) {
       // we're now matching something like {type: "url", value: "http..."}
-      if( subMatchSpec[subKey] !== subMatchValue[subKey] )
-        return false;
+      const specValue = subMatchSpec[subKey];
+      const matchValue = subMatchValue[subKey];
+      
+      // Support regex matching for RegExp objects
+      if( specValue instanceof RegExp ) {
+        if( !specValue.test(matchValue) )
+          return false;
+      } else {
+        // Exact matching for non-regex values
+        if( specValue !== matchValue )
+          return false;
+      }
+    }
   }
   return true; // no false matches found, let's send a response
 }
