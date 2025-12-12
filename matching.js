@@ -33,10 +33,19 @@ export function filterChangesetsOnPattern(changeSets, entry) {
   return filteredChangesets;
 }
 
+function serializeMatchSpec(matchSpec) {
+  return JSON.stringify(matchSpec, function(key, value) {
+    if (value instanceof RegExp) {
+      return `RegExp(${value.toString()})`;
+    }
+    return value;
+  });
+}
+
 export function tripleMatchesSpec( triple, matchSpec ) {
   // form of triple is {s, p, o, g}, same as matchSpec (g for graph is optional)
   if(DEBUG_TRIPLE_MATCHES_SPEC)
-    console.log(`Does ${JSON.stringify(triple)} match ${JSON.stringify(matchSpec)}?`);
+    console.log(`Does ${JSON.stringify(triple)} match ${serializeMatchSpec(matchSpec)}?`);
 
   for( let key in matchSpec ){
     // key is one of s, p, o
@@ -53,7 +62,10 @@ export function tripleMatchesSpec( triple, matchSpec ) {
       
       // Support regex matching for RegExp objects
       if( specValue instanceof RegExp ) {
-        if( !specValue.test(matchValue) )
+        const regexMatch = specValue.test(matchValue);
+        if(DEBUG_TRIPLE_MATCHES_SPEC)
+          console.log(`  Regex ${specValue.toString()} ${regexMatch ? 'MATCHES' : 'DOES NOT MATCH'} "${matchValue}"`);
+        if( !regexMatch )
           return false;
       } else {
         // Exact matching for non-regex values
