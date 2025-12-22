@@ -23,20 +23,19 @@ const executeBundledRequest = (bundleKey) => {
     console.error(
       `Bundle for key ${bundleKey} unexpectedly got handled already.`
     );
-    return;
+  } else {
+    const foldedChangeSets = foldChangeSets(bundle.entry, bundle.changeSets);
+
+    sendRequest(
+      bundle.entry,
+      foldedChangeSets,
+      bundle.muCallIdTrail,
+      bundle.muSessionId,
+      {
+        "mu-bundled-call-id-trails": bundle.bundledCallIdTrails.join(","),
+      }
+    );
   }
-
-  const foldedChangeSets = foldChangeSets(bundle.entry, bundle.changeSets);
-
-  sendRequest(
-    bundle.entry,
-    foldedChangeSets,
-    bundle.muCallIdTrail,
-    bundle.muSessionId,
-    {
-      "mu-bundled-call-id-trails": bundle.bundledCallIdTrails.join(","),
-    }
-  );
 };
 
 export const sendBundledRequest = (
