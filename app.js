@@ -36,10 +36,8 @@ app.post( '/', bodyParser.json({limit: '500mb'}), function( req, res ) {
       } );
   } );
 
-  // inform watchers
   informWatchers( changeSets, res, muCallIdTrail, muSessionId );
 
-  // push relevant data to interested actors
   res.status(204).send();
 } );
 
