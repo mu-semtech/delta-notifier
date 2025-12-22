@@ -106,8 +106,13 @@ export async function sendRequest(
       "mu-session-id": muSessionId,
     };
 
-    if (changeSets[0].allowedGroups) {
-      headers["MU-AUTH-ALLOWED-GROUPS"] = changeSets[0].allowedGroups;
+    if (changeSets[0].allowedGroups) { // TODO: underspecified with sudo
+      const propagateAllowedGroups = entry.options?.propagateAllowedGroups;
+      if ( propagateAllowedGroups === true || propagateAllowedGroups === undefined) {
+        headers["MU-AUTH-ALLOWED-GROUPS"] = changeSets[0].allowedGroups;
+      } else if ( typeof propagateAllowedGroups === "function" ) {
+        headers["MU-AUTH-ALLOWED-GROUPS"] = propagateAllowedGroups(changeSets[0].allowedGroups);
+      }
     }
 
     let body;
