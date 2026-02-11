@@ -5,6 +5,7 @@ import dns from 'dns';
 import { foldChangeSets } from './folding';
 import { sendRequest } from './send-request';
 import { sendBundledRequest } from './bundle-requests';
+import { metricsHandler, recordDeltaReceived } from './metrics.js';
 
 import services from './config/rules.js';
 
@@ -21,6 +22,8 @@ app.get( '/', function( req, res ) {
   res.send("Hello, delta notification is running");
 } );
 
+app.get( '/metrics', metricsHandler );
+
 app.post( '/', bodyParser.json({limit: '500mb'}), function( req, res ) {
   if( process.env["LOG_REQUESTS"] ) {
     console.log("Logging request body");
@@ -28,6 +31,8 @@ app.post( '/', bodyParser.json({limit: '500mb'}), function( req, res ) {
   }
 
   const changeSets = req.body.changeSets;
+
+  recordDeltaReceived(changeSets.length);
 
   const originalMuCallIdTrail = JSON.parse( req.get('mu-call-id-trail') || "[]" );
   const originalMuCallId = req.get('mu-call-id');
