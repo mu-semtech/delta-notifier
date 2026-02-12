@@ -1,5 +1,9 @@
+import { createRequire } from 'module';
 import client from 'prom-client';
 import services from './config/rules.js';
+
+const require = createRequire(import.meta.url);
+const { version } = require('./package.json');
 
 const register = new client.Registry();
 
@@ -11,8 +15,6 @@ const info = new client.Gauge({
   labelNames: ['version'],
   registers: [register]
 });
-
-const version = process.env.DELTA_NOTIFIER_VERSION || 'unknown';
 info.set({ version }, 1);
 
 const configuredRulesTotal = new client.Gauge({
