@@ -29,7 +29,10 @@ export default [
       // fold sequences of deleted/inserted quads that don't have any effect
       foldEffectiveChanges: true,
       // don't react to deltas from self
-      ignoreFromSelf: true
+      ignoreFromSelf: true,
+      // update access rights
+      propagateAllowedGroups: true,
+      propagateMuSessionId: true
     }
   }
 ];

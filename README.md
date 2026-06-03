@@ -72,7 +72,7 @@ The exported property contains an array of definitions, each linking a match to 
   - `options.ignoreFromSelf`: Don't inform about changes that originated from the microservice to be informed (based on the hostname).
   - `options.retry`: (experimental) How many times the request is sent again on failure.  Defaults to 0. Warning: in case of retries, deltas may be received out of order!
   - `options.retryTimeout`: (experimental) How much time is left in between retries (in ms).  Currently defaults to 250ms.
-  - `options.propagateAllowedGroups`: (experimental) Should we propagate allowed groups to the consumer or should they be dropped?  Defaults to `true` which means propagate, can also be a function which receives the access rights to alter.
+  - `options.propagateAllowedGroups`: (experimental) Should we propagate allowed groups to the consumer or should they be dropped?  Defaults to `true` which means propagate.
 
 ### Modifying quads
 #### Normalize datetime
