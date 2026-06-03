@@ -30,9 +30,6 @@ export default [
       foldEffectiveChanges: true,
       // don't react to deltas from self
       ignoreFromSelf: true,
-      // update access rights
-      propagateAllowedGroups: true,
-      propagateMuSessionId: true
     }
   }
 ];

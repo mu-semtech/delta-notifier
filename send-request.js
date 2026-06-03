@@ -107,10 +107,7 @@ export async function sendRequest(
     };
 
     if (changeSets[0].allowedGroups) { // sudo queries will not get allowedGroups in sparql-parser:0.0.16
-      const propagateAllowedGroups = entry.options?.propagateAllowedGroups;
-      if ( propagateAllowedGroups === true || propagateAllowedGroups === undefined) {
-        headers["MU-AUTH-ALLOWED-GROUPS"] = changeSets[0].allowedGroups;
-      }
+      headers["MU-AUTH-ALLOWED-GROUPS"] = changeSets[0].allowedGroups;
     }
 
     let body;
