@@ -1,11 +1,16 @@
-import { app } from 'mu';
-import services from './config/rules';
+import { app, errorHandler, beforeExit, uuid } from 'mu';
 import normalizeQuad from './config/normalize-quad';
 import bodyParser from 'body-parser';
 import dns from 'dns';
 import { foldChangeSets } from './folding';
 import { sendRequest } from './send-request';
 import { sendBundledRequest } from './bundle-requests';
+
+import services from './config/rules.js';
+
+beforeExit( async () => {
+  console.log('Shutting down delta-notifier gracefully...');
+});
 
 // Log server config if requested
 if( process.env["LOG_SERVER_CONFIGURATION"] )
@@ -137,3 +142,5 @@ async function getServiceIp(entry) {
     } );
   } );
 };
+
+app.use(errorHandler);
