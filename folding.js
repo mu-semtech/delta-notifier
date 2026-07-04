@@ -1,3 +1,4 @@
+import { DEBUG_DELTA_FOLD } from './env';
 /**
  * Quads may be folded if
  * - a quad is deleted after it has been inserted
@@ -44,7 +45,7 @@ export function foldChangeSets(entry, changeSets) {
     if (foldedInsertQuads.length)
       foldedChangeSets.push({ delete: [], insert: foldedInsertQuads });
 
-    if (process.env["DEBUG_DELTA_FOLD"])
+    if (DEBUG_DELTA_FOLD)
       console.log(`Folded changeset from:\n ${JSON.stringify(changeSets)}\nto:\n ${JSON.stringify(foldedChangeSets)}`);
 
     return foldedChangeSets;
