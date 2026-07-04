@@ -1,11 +1,17 @@
-import { app } from 'mu';
-import services from './config/rules';
+import { app, errorHandler, beforeExit, uuid } from 'mu';
 import normalizeQuad from './config/normalize-quad';
 import bodyParser from 'body-parser';
 import dns from 'dns';
 import { foldChangeSets } from './folding';
 import { sendRequest } from './send-request';
 import { sendBundledRequest } from './bundle-requests';
+import { metricsHandler, recordDeltaReceived } from './metrics.js';
+
+import services from './config/rules.js';
+
+beforeExit( async () => {
+  console.log('Shutting down delta-notifier gracefully...');
+});
 
 // Log server config if requested
 if( process.env["LOG_SERVER_CONFIGURATION"] )
@@ -16,6 +22,8 @@ app.get( '/', function( req, res ) {
   res.send("Hello, delta notification is running");
 } );
 
+app.get( '/metrics', metricsHandler );
+
 app.post( '/', bodyParser.json({limit: '500mb'}), function( req, res ) {
   if( process.env["LOG_REQUESTS"] ) {
     console.log("Logging request body");
@@ -23,6 +31,8 @@ app.post( '/', bodyParser.json({limit: '500mb'}), function( req, res ) {
   }
 
   const changeSets = req.body.changeSets;
+
+  recordDeltaReceived(changeSets.length);
 
   const originalMuCallIdTrail = JSON.parse( req.get('mu-call-id-trail') || "[]" );
   const originalMuCallId = req.get('mu-call-id');
@@ -137,3 +147,5 @@ async function getServiceIp(entry) {
     } );
   } );
 };
+
+app.use(errorHandler);

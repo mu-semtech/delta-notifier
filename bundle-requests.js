@@ -1,5 +1,6 @@
 import { foldChangeSets } from './folding';
 import { sendRequest } from "./send-request.js";
+import { incPendingBundles, decPendingBundles } from "./metrics.js";
 
 // map from bundle key to bundle object
 const bundles = {};
@@ -18,6 +19,7 @@ const getBundleKey = (entry, muSessionId, changeSets) => {
 const executeBundledRequest = (bundleKey) => {
   const bundle = bundles[bundleKey];
   delete bundles[bundleKey];
+  decPendingBundles();
 
   if (!bundle) {
     console.error(
@@ -75,6 +77,7 @@ export const sendBundledRequest = (
       muSessionId,
       bundledCallIdTrails: [],
     };
+    incPendingBundles();
     setTimeout(
       () => executeBundledRequest(bundleKey),
       entry.options.gracePeriod
